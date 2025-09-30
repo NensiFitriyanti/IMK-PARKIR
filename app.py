@@ -78,10 +78,16 @@ def set_monitor_message(html_content, type='default'):
 
 def process_scan(scan_id, feedback_placeholder):
     """Logika utama untuk memproses ID Barcode yang diterima."""
-    if not scan_id or scan_id in ['simulasi1234']: # Tambahkan simulasi ID agar tidak memproses
-        # Khusus untuk simulasi, jika ID dummy masih ada, jangan proses.
-        if scan_id == 'simulasi1234':
-            feedback_placeholder.error("ID Barcode tidak valid. Mohon lakukan scan ID yang sebenarnya.")
+    # Menghindari pemrosesan jika ID simulasi masih ada tanpa ada logic asli
+    if not scan_id or scan_id == "simulasi1234": 
+        feedback_placeholder.error("ID Barcode kosong atau tidak valid.")
+        # Tampilkan pesan default di monitor jika error
+        set_monitor_message(
+            f"<div style='background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"\
+            f"<h1 style='margin: 0; font-size: 80px;'>❌ ERROR!</h1>"\
+            f"<p style='font-size: 40px; font-weight: bold;'>BARCODE TIDAK VALID / KOSONG</p>"\
+            f"</div>", 'ERROR'
+        )
         return
         
     if scan_id in st.session_state.data.index:
@@ -147,13 +153,6 @@ def process_scan(scan_id, feedback_placeholder):
         )
         feedback_placeholder.error("❌ Barcode ID tidak terdaftar!")
 
-# FUNGSI UNTUK MENGUBAH TAB AKTIF
-def set_active_tab():
-    """Menyimpan indeks tab aktif ke session state."""
-    # St.tabs default index (0, 1, 2)
-    # Kita gunakan key yang sama dengan key st.tabs
-    st.session_state.active_scan_tab = st.session_state.scan_tabs_key 
-
 
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
@@ -178,10 +177,6 @@ if 'monitor_html' not in st.session_state:
         "<p style='font-size: 30px;'>Mohon Tunggu Petugas Memproses</p>"\
         "</div>"
     )
-# INISIALISASI TAB AKTIF: 0 = Input Teks
-if 'active_scan_tab' not in st.session_state:
-    st.session_state.active_scan_tab = 0
-
 
 # Tombol Logout dan Menu Admin/Monitor
 st.sidebar.title("Menu Aplikasi")
@@ -197,7 +192,7 @@ elif st.session_state.app_mode not in ['login', 'register']:
             st.session_state.app_mode = 'admin_analytics'
             st.rerun()
         st.sidebar.markdown("---")
-        if st.sidebar.button("Buka Monitor Gerbang"):
+        if st.sidebar.button("Buka Monitor Gerbang (Layar Terpisah)"):
              st.session_state.app_mode = 'gate_monitor'
              st.rerun()
         st.sidebar.markdown("---")
@@ -216,12 +211,14 @@ if st.session_state.app_mode != 'gate_monitor':
 # FUNGSI APLIKASI BERDASARKAN MODE
 # =================================================================
 
-# ----------------- MODE MONITOR GERBANG BARU -----------------
+# ----------------- MODE MONITOR GERBANG -----------------
 if st.session_state.app_mode == 'gate_monitor':
+    # Halaman monitor layar penuh.
     st.markdown(
         st.session_state.monitor_html, 
         unsafe_allow_html=True
     )
+    # Tombol kembali di sidebar untuk kemudahan
     st.sidebar.markdown("---")
     if st.sidebar.button("Kembali ke Dashboard Admin"):
         st.session_state.app_mode = 'admin_dashboard'
@@ -380,42 +377,38 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         # Placeholder untuk feedback
         feedback_placeholder = st.empty()
         
-        # st.tabs dengan KEY dan CALLBACK
+        # st.tabs dengan KEY
         tab_text, tab_file, tab_camera = st.tabs(
             ["Input Teks ID", "Unggah Barcode Gambar", "Ambil Foto Barcode (Kamera)"],
-            key="scan_tabs_key",
-            on_change=set_active_tab,
-            # Tab aktif ditentukan dari session state saat loading
-            # Jika user pindah tab, session state akan diupdate oleh callback
-            # Ini memastikan kamera hanya muncul di tab yang benar
-            selected=st.session_state.active_scan_tab
+            # Key akan menyimpan NAMA TAB yang dipilih saat ini.
+            key="active_scan_tab_key", 
         )
 
-        # Input 1: Teks (Index 0)
+        # Input 1: Teks
         with tab_text:
             scan_id_text = st.text_input("Masukkan Barcode ID Manual:", key="admin_scan_id_text").strip()
             if st.button("PROSES DENGAN TEKS"):
                 process_scan(scan_id_text, feedback_placeholder)
 
-        # Input 2: Unggah File (Index 1)
+        # Input 2: Unggah File
         with tab_file:
             uploaded_file = st.file_uploader("Unggah Gambar Barcode/QR Code (.png, .jpg)", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
-                # SIMULASI PEMBACAAN BARCODE DARI GAMBAR
-                simulated_id = uploaded_file.name[:8] 
+                # SIMULASI PEMBACAAN BARCODE DARI GAMBAR (Gunakan ID asli jika ada lib)
+                simulated_id = "uploaded_" + uploaded_file.name[:8] 
                 st.info(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id}** (berdasarkan nama file).")
                 if st.button("PROSES DENGAN GAMBAR"):
                     process_scan(simulated_id, feedback_placeholder)
 
-        # Input 3: Ambil Foto (Kamera) (Index 2)
+        # Input 3: Ambil Foto (Kamera)
         with tab_camera:
-            # KAMERA HANYA MUNCUL JIKA TAB INI AKTIF (Index 2)
-            if st.session_state.active_scan_tab == 2:
-                camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
+            # KAMERA HANYA MUNCUL JIKA KEY SESUAI DENGAN NAMA TAB INI
+            if st.session_state.active_scan_tab_key == "Ambil Foto Barcode (Kamera)":
+                camera_image = st.camera_input("Arahkan Kamera ke Barcode", key="camera_input_key", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
                 
                 if camera_image is not None:
-                    # SIMULASI PEMBACAAN BARCODE DARI FOTO KAMERA
-                    simulated_id_cam = "simulasi1234" # ID dummy untuk simulasi
+                    # SIMULASI PEMBACAAN BARCODE DARI FOTO KAMERA (Gunakan ID asli jika ada lib)
+                    simulated_id_cam = "simulasi1234" 
                     st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
                     st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
                     if st.button("PROSES DENGAN FOTO"):
