@@ -4,49 +4,51 @@ import uuid
 import qrcode
 from io import BytesIO
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+import altair as alt
 
 # --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
+LOG_FILE = 'parking_log.csv' # File baru untuk mencatat semua transaksi
 ADMIN_USER = "petugas"         
 ADMIN_PASS = "admin123"        
 
-# Kolom yang wajib ada di dalam DataFrame/CSV (DITAMBAH: time_in, time_out, duration)
-REQUIRED_COLUMNS = ['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status', 'time_in', 'time_out', 'duration']
+REQUIRED_USER_COLUMNS = ['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status', 'time_in', 'time_out', 'duration']
+REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_type']
 
 # --- FUNGSI PEMBANTU (UTILITIES) ---
 
-def load_data():
-    """Memuat data dari CSV atau membuat DataFrame baru, dan memastikan semua kolom penting ada."""
+def load_data(file_name, required_cols):
+    """Memuat data dari CSV atau membuat DataFrame baru, dan memastikan semua kolom ada."""
     
-    if os.path.exists(DATA_FILE):
-        df = pd.read_csv(DATA_FILE)
+    if os.path.exists(file_name):
+        df = pd.read_csv(file_name)
         
         # LOGIKA PERBAIKAN KOLOM HILANG
-        for col in REQUIRED_COLUMNS:
+        for col in required_cols:
             if col not in df.columns:
                 df[col] = '' 
         
-        # PERBAIKAN TIPE DATA UTAMA
-        df['user_id'] = df['user_id'].astype(str) 
-        df['name'] = df['name'].astype(str) 
-        
-        # KONVERSI TIPE DATA WAKTU
-        # Konversi kolom waktu ke datetime, error='coerce' akan mengubah data rusak menjadi NaT (Not a Time)
-        df['time_in'] = pd.to_datetime(df['time_in'], errors='coerce')
-        df['time_out'] = pd.to_datetime(df['time_out'], errors='coerce')
-        
+        # PERBAIKAN TIPE DATA WAKTU & ID
+        if 'user_id' in df.columns:
+            df['user_id'] = df['user_id'].astype(str)
+        if 'name' in df.columns:
+            df['name'] = df['name'].astype(str)
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        if 'time_in' in df.columns:
+            df['time_in'] = pd.to_datetime(df['time_in'], errors='coerce')
+        if 'time_out' in df.columns:
+            df['time_out'] = pd.to_datetime(df['time_out'], errors='coerce')
+            
     else:
-        # Buat DataFrame kosong jika file belum ada
-        df = pd.DataFrame(columns=REQUIRED_COLUMNS)
+        df = pd.DataFrame(columns=required_cols)
     
-    # Pastikan index diatur ke barcode_id
-    df = df.set_index('barcode_id', drop=False)
     return df
 
-def save_data(df):
+def save_data(df, file_name):
     """Menyimpan DataFrame ke CSV."""
-    df.to_csv(DATA_FILE, index=False)
+    df.to_csv(file_name, index=False)
 
 def generate_qr_code(data):
     """Menghasilkan gambar QR code (Barcode) di memori."""
@@ -59,12 +61,28 @@ def generate_qr_code(data):
     buffer.seek(0)
     return buffer
 
+def add_to_log(barcode_id, name, event_type, timestamp):
+    """Menambahkan entri baru ke tabel log."""
+    new_log = {
+        'event_id': str(uuid.uuid4()),
+        'barcode_id': barcode_id,
+        'name': name,
+        'timestamp': timestamp,
+        'event_type': event_type
+    }
+    # Tambahkan log ke DataFrame log
+    st.session_state.log.loc[len(st.session_state.log)] = new_log
+    save_data(st.session_state.log, LOG_FILE)
+
+
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
-# Muat data ke Session State
+# Muat data utama dan log
 if 'data' not in st.session_state:
-    st.session_state.data = load_data()
+    st.session_state.data = load_data(DATA_FILE, REQUIRED_USER_COLUMNS).set_index('barcode_id', drop=False)
+if 'log' not in st.session_state:
+    st.session_state.log = load_data(LOG_FILE, REQUIRED_LOG_COLUMNS)
 
 # Mengatur status aplikasi (Mode)
 if 'app_mode' not in st.session_state:
@@ -74,9 +92,19 @@ if 'logged_in_user_id' not in st.session_state:
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None 
 
-# Tombol Logout (Selalu di atas, kecuali di mode login/register)
+# Tombol Logout dan Menu Admin
+st.sidebar.title("Menu Aplikasi")
 if st.session_state.app_mode not in ['login', 'register']:
-    if st.button("Logout"):
+    if st.session_state.user_role == 'admin':
+        if st.sidebar.button("Dashboard Petugas"):
+            st.session_state.app_mode = 'admin_dashboard'
+            st.rerun()
+        if st.sidebar.button("Analitik & Grafik"):
+            st.session_state.app_mode = 'admin_analytics'
+            st.rerun()
+        st.sidebar.markdown("---")
+
+    if st.sidebar.button("Logout"):
         st.session_state.app_mode = 'login'
         st.session_state.logged_in_user_id = None
         st.session_state.user_role = None
@@ -90,44 +118,35 @@ st.markdown("---")
 # FUNGSI APLIKASI BERDASARKAN MODE
 # =================================================================
 
-# ----------------- MODE LOGIN / REGISTER -----------------
+# --- MODE LOGIN / REGISTER (Tidak Berubah) ---
 if st.session_state.app_mode == 'login':
+    # ... (Kode Login/Register di sini, menggunakan logika Nama Lengkap) ...
     st.subheader("Selamat Datang! Silakan Login atau Daftar")
     col_l, col_r = st.columns(2)
 
     with col_l:
         with st.form("login_form"):
             st.write("### Login Pengguna/Petugas")
-            
-            # PERUBAHAN: Input menggunakan Nama Lengkap
             login_name_or_admin = st.text_input("Nama Lengkap Anda (atau 'petugas')", key="login_id").strip()
-            
             login_pass = st.text_input("Password", type="password", key="login_pass")
             login_button = st.form_submit_button("Login")
             
             if login_button:
-                
-                # 1. Cek login Admin
                 if login_name_or_admin == ADMIN_USER and login_pass == ADMIN_PASS:
                     st.session_state.app_mode = 'admin_dashboard'
                     st.session_state.user_role = 'admin'
                     st.success("Login sebagai Petugas/Admin berhasil!")
                     st.rerun()
-
-                # 2. Cek login Pengguna Biasa (Berdasarkan Nama Lengkap)
                 else:
                     found_user = st.session_state.data[
                         st.session_state.data['name'].str.lower() == login_name_or_admin.lower()
                     ]
-
                     if not found_user.empty:
                         first_match = found_user.iloc[0]
-
-                        # Cek password
                         if first_match['password'] == login_pass: 
                             st.session_state.app_mode = 'user_dashboard'
                             st.session_state.user_role = 'user'
-                            st.session_state.logged_in_user_id = first_match['barcode_id'] 
+                            st.session_state.logged_in_user_id = first_match['barcode_id']
                             st.success(f"Login pengguna {first_match['name']} berhasil!")
                             st.rerun()
                         else:
@@ -135,17 +154,14 @@ if st.session_state.app_mode == 'login':
                     else:
                         st.error("Nama Lengkap tidak terdaftar!")
 
-
     with col_r:
         if st.button("Daftar Akun Baru (Register)"):
             st.session_state.app_mode = 'register'
             st.rerun()
 
-
-# ----------------- MODE REGISTER -----------------
 elif st.session_state.app_mode == 'register':
+    # ... (Kode Register di sini) ...
     st.subheader("Buat Akun Parkir Baru")
-    
     if st.button("<< Kembali ke Login"):
         st.session_state.app_mode = 'login'
         st.rerun()
@@ -173,12 +189,12 @@ elif st.session_state.app_mode == 'register':
                         'vehicle_type': vehicle_type,
                         'license_plate': license_plate,
                         'status': 'OUT',
-                        'time_in': pd.NaT, # Not a Time (Kosong)
-                        'time_out': pd.NaT, # Kosong
-                        'duration': '' # Kosong
+                        'time_in': pd.NaT,
+                        'time_out': pd.NaT,
+                        'duration': ''
                     }
                     st.session_state.data.loc[new_barcode_id] = new_data
-                    save_data(st.session_state.data)
+                    save_data(st.session_state.data, DATA_FILE)
                     
                     st.success("Pendaftaran berhasil! Silakan Login.")
                     st.session_state.app_mode = 'login' 
@@ -187,7 +203,7 @@ elif st.session_state.app_mode == 'register':
                 st.error("Semua kolom harus diisi!")
 
 
-# ----------------- DASHBOARD PENGGUNA -----------------
+# --- DASHBOARD PENGGUNA (Tidak Berubah) ---
 elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_role == 'user':
     user_id = st.session_state.logged_in_user_id
     user_data = st.session_state.data.loc[user_id]
@@ -204,17 +220,14 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
         st.markdown(f"**Nomor Polisi:** {user_data['license_plate']}")
         st.markdown(f"**Status Parkir Saat Ini:** **{user_data['status']}**")
         
-        # Tampilkan data waktu
         st.markdown("---")
         st.subheader("Informasi Waktu")
         
-        # Cek apakah ada data waktu masuk yang valid
         if pd.notna(user_data['time_in']):
             st.markdown(f"**Waktu Masuk:** {user_data['time_in'].strftime('%d %b %Y, %H:%M:%S')}")
         else:
             st.markdown(f"**Waktu Masuk:** Belum ada data masuk.")
             
-        # Cek apakah ada data durasi (hanya muncul setelah keluar)
         if user_data['status'] == 'OUT' and user_data['duration']:
             st.markdown(f"**Waktu Keluar:** {user_data['time_out'].strftime('%d %b %Y, %H:%M:%S')}")
             st.success(f"**Durasi Parkir:** {user_data['duration']}")
@@ -234,7 +247,7 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
         )
 
 
-# ----------------- DASHBOARD ADMIN/PETUGAS -----------------
+# --- DASHBOARD ADMIN/PETUGAS ---
 elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_role == 'admin':
     st.header("Dashboard Petugas Parkir (Akses Admin)")
     
@@ -242,14 +255,11 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
     with col_scan:
         st.subheader("Simulasi Scanner Gerbang")
-        scan_id = st.text_input("Masukkan Barcode ID (Salin dari Dashboard Pengguna):").strip()
+        scan_id = st.text_input("Masukkan Barcode ID:").strip()
         scan_button = st.button("PROSES SCAN & BUKA GERBANG")
         
         if scan_button and scan_id:
             if scan_id in st.session_state.data.index:
-                
-                # --- LOGIKA PENCATATAN WAKTU ---
-                
                 user_row = st.session_state.data.loc[scan_id]
                 current_status = user_row['status']
                 current_time = datetime.now()
@@ -262,11 +272,14 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                     action = "MASUK"
                     
                     st.session_state.data.loc[scan_id, 'status'] = new_status
-                    st.session_state.data.loc[scan_id, 'time_in'] = current_time # Catat Waktu Masuk
-                    st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      # Reset Waktu Keluar
-                    st.session_state.data.loc[scan_id, 'duration'] = ''          # Reset Durasi
+                    st.session_state.data.loc[scan_id, 'time_in'] = current_time 
+                    st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      
+                    st.session_state.data.loc[scan_id, 'duration'] = ''          
+                    save_data(st.session_state.data, DATA_FILE)
                     
-                    save_data(st.session_state.data)
+                    # Tambahkan ke log
+                    add_to_log(scan_id, name, 'IN', current_time)
+
                     st.success(f"✅ GERBANG TERBUKA! Selamat {action}, {name}. Status baru: DI DALAM.")
                     
                 else: # Status is 'IN'
@@ -278,16 +291,18 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                     
                     if pd.notna(time_in):
                         duration = current_time - time_in
-                        # Format durasi ke jam:menit:detik
                         duration_str = str(duration).split('.')[0] 
                     else:
                         duration_str = "0:00:00 (Error Waktu Masuk)"
                     
                     st.session_state.data.loc[scan_id, 'status'] = new_status
-                    st.session_state.data.loc[scan_id, 'time_out'] = current_time # Catat Waktu Keluar
-                    st.session_state.data.loc[scan_id, 'duration'] = duration_str # Catat Durasi
+                    st.session_state.data.loc[scan_id, 'time_out'] = current_time 
+                    st.session_state.data.loc[scan_id, 'duration'] = duration_str 
+                    save_data(st.session_state.data, DATA_FILE)
                     
-                    save_data(st.session_state.data)
+                    # Tambahkan ke log
+                    add_to_log(scan_id, name, 'OUT', current_time)
+
                     st.info(f"🚪 GERBANG TERBUKA! Selamat {action}, {name}. Durasi Parkir: {duration_str}. Status baru: DI LUAR.")
                 
                 st.rerun()
@@ -308,12 +323,10 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
     st.markdown("---")
     
-    # Tabel Status Parkir
+    # Tabel Status Parkir & Hapus Akun
     st.subheader("Tabel Status Parkir Saat Ini")
-    # Tambahkan kolom waktu dan durasi untuk ditampilkan
     display_data = st.session_state.data[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
-    # Format kolom waktu agar mudah dibaca sebelum ditampilkan
     display_data['time_in'] = display_data['time_in'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
     display_data['time_out'] = display_data['time_out'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
 
@@ -326,31 +339,102 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         use_container_width=True
     )
     
-    # --- LOGIKA PENGHAPUSAN AKUN OLEH ADMIN ---
+    # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
     st.markdown("---")
     st.subheader("Opsi Admin: Hapus Akun Pengguna")
     
-    # Tampilkan daftar pengguna untuk dipilih
     user_list = st.session_state.data['name'].tolist()
-    
-    # Tambahkan opsi kosong untuk menghindari penghapusan tidak sengaja
     user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list)
     
     delete_button = st.button("Hapus Akun Pengguna Terpilih", disabled=(user_to_delete_name == ''))
     
     if delete_button and user_to_delete_name:
-        # Temukan barcode_id berdasarkan nama yang dipilih
         try:
-            # Cari baris pertama yang cocok dengan nama
-            user_row_to_delete = st.session_state.data[st.session_state.data['name'] == user_to_delete_name].iloc[0]
-            barcode_id_to_delete = user_row_to_delete.name
+            # Hapus dari tabel utama
+            user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
+            barcode_id_to_delete = user_rows.index.tolist()
             
-            # Hapus baris dari DataFrame
             st.session_state.data.drop(index=barcode_id_to_delete, inplace=True)
-            save_data(st.session_state.data)
+            save_data(st.session_state.data, DATA_FILE)
+
+            # Hapus semua log yang terkait dengan user ini
+            st.session_state.log = st.session_state.log[~st.session_state.log['barcode_id'].isin(barcode_id_to_delete)]
+            save_data(st.session_state.log, LOG_FILE)
             
-            st.success(f"Akun pengguna {user_to_delete_name} berhasil dihapus. Akun ini tidak dapat digunakan lagi.")
+            st.success(f"Akun pengguna {user_to_delete_name} (dan {len(barcode_id_to_delete)} data terkait) berhasil dihapus.")
             st.rerun()
             
-        except IndexError:
-            st.error("Pengguna tidak ditemukan atau terjadi masalah saat penghapusan.")
+        except Exception as e:
+            st.error(f"Terjadi masalah saat penghapusan: {e}")
+
+
+# --- DASHBOARD ANALITIK & GRAFIK ADMIN ---
+elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_role == 'admin':
+    st.header("Analitik Parkir: Log & Grafik")
+    
+    if st.session_state.log.empty:
+        st.warning("Belum ada data transaksi yang tercatat untuk dianalisis.")
+        st.stop()
+
+    df_log = st.session_state.log.copy()
+    
+    # --- Filter Berdasarkan Pengguna ---
+    user_names = ['Semua Pengguna'] + sorted(df_log['name'].unique().tolist())
+    selected_name = st.selectbox("Filter berdasarkan Pengguna:", user_names)
+
+    if selected_name != 'Semua Pengguna':
+        df_filtered = df_log[df_log['name'] == selected_name]
+        st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
+        
+        # Tampilkan Log Spesifik
+        display_log = df_filtered[['timestamp', 'event_type']].copy()
+        display_log['Waktu'] = display_log['timestamp'].dt.strftime('%d/%m/%Y %H:%M:%S')
+        display_log.rename(columns={'event_type': 'Tipe Kejadian'}, inplace=True)
+        st.dataframe(display_log[['Waktu', 'Tipe Kejadian']], use_container_width=True)
+
+    else:
+        df_filtered = df_log
+        st.subheader("Grafik Total Kejadian Parkir")
+
+    # --- Filter Grafik Harian/Mingguan/Bulanan/Tahunan ---
+    st.markdown("---")
+    time_granularity = st.radio(
+        "Pilih Granularitas Grafik:", 
+        ('Harian', 'Mingguan', 'Bulanan', 'Tahunan'),
+        horizontal=True
+    )
+    
+    # Menentukan Agregasi
+    if time_granularity == 'Harian':
+        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.date
+        date_format = "%d %b"
+    elif time_granularity == 'Mingguan':
+        # Mengelompokkan berdasarkan tanggal mulai minggu
+        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('W').dt.start_time.dt.date
+        date_format = "Minggu %W"
+    elif time_granularity == 'Bulanan':
+        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('M').dt.start_time.dt.date
+        date_format = "%b %Y"
+    else: # Tahunan
+        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('Y').dt.start_time.dt.date
+        date_format = "%Y"
+
+    # Agregasi Data untuk Grafik
+    chart_data = df_filtered.groupby(['DateGroup', 'event_type']).size().reset_index(name='Jumlah')
+    
+    if chart_data.empty:
+        st.warning("Data log tidak mencukupi untuk membuat grafik berdasarkan filter ini.")
+        st.stop()
+
+    # Membuat Grafik Altair
+    chart = alt.Chart(chart_data).mark_bar().encode(
+        # Konversi DateGroup ke string atau tanggal untuk sumbu X
+        x=alt.X('DateGroup', axis=alt.Axis(title=time_granularity, format=date_format)),
+        y=alt.Y('Jumlah', title='Jumlah Transaksi'),
+        color='event_type',
+        tooltip=['DateGroup', 'event_type', 'Jumlah']
+    ).properties(
+        title=f"Total Transaksi Parkir ({time_granularity})"
+    ).interactive() # Zoom dan Pan
+
+    st.altair_chart(chart, use_container_width=True)
