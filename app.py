@@ -35,10 +35,11 @@ def load_data(file_name, required_cols):
         if 'name' in df.columns:
             df['name'] = df['name'].astype(str)
             
-        # PERBAIKAN BARU: Pastikan password adalah string dan isi NaN dengan string kosong
+        # Pastikan password adalah string dan isi NaN dengan string kosong
         if 'password' in df.columns:
             df['password'] = df['password'].astype(str).fillna('')
             
+        # Konversi kolom waktu ke datetime di awal (jika memungkinkan)
         if 'timestamp' in df.columns:
             df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         if 'time_in' in df.columns:
@@ -153,7 +154,6 @@ if st.session_state.app_mode == 'login':
                     if not found_user.empty:
                         first_match = found_user.iloc[0]
 
-                        # PERBAIKAN LOGIS: Bersihkan password dari spasi sebelum dibandingkan
                         stored_password_clean = str(first_match['password']).strip()
 
                         if stored_password_clean == login_pass: 
@@ -183,11 +183,11 @@ elif st.session_state.app_mode == 'register':
         st.rerun()
         
     with st.form("register_form"):
-        name = st.text_input("Nama Lengkap", key="reg_name").strip() # Tambahkan strip()
-        user_id = st.text_input("NIM/NIP (Ini adalah ID Unik Anda)", key="reg_user_id").strip() # Tambahkan strip()
-        password = st.text_input("Buat Password", type="password", key="reg_pass").strip() # Tambahkan strip()
+        name = st.text_input("Nama Lengkap", key="reg_name").strip()
+        user_id = st.text_input("NIM/NIP (Ini adalah ID Unik Anda)", key="reg_user_id").strip()
+        password = st.text_input("Buat Password", type="password", key="reg_pass").strip()
         vehicle_type = st.selectbox("Jenis Kendaraan", ['Motor', 'Mobil'], key="reg_vehicle")
-        license_plate = st.text_input("Nomor Polisi (Nopol)", key="reg_nopol").upper().strip() # Tambahkan strip()
+        license_plate = st.text_input("Nomor Polisi (Nopol)", key="reg_nopol").upper().strip()
         
         submitted = st.form_submit_button("Daftar & Buat Barcode Pertama")
 
@@ -343,6 +343,10 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     st.subheader("Tabel Status Parkir Saat Ini")
     display_data = st.session_state.data[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
+    # PERBAIKAN: Paksa konversi kolom waktu ke datetime sebelum menggunakan .dt
+    display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce')
+    display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce')
+    
     display_data['time_in'] = display_data['time_in'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
     display_data['time_out'] = display_data['time_out'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
 
@@ -402,6 +406,10 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
         # Tampilkan Log Spesifik
         st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
         display_log = df_filtered[['timestamp', 'event_type']].copy()
+        
+        # PERBAIKAN: Pastikan timestamp bertipe datetime sebelum menggunakan .dt
+        display_log['timestamp'] = pd.to_datetime(display_log['timestamp'], errors='coerce') 
+        
         display_log['Waktu'] = display_log['timestamp'].dt.strftime('%d/%m/%Y %H:%M:%S')
         display_log.rename(columns={'event_type': 'Tipe Kejadian'}, inplace=True)
         st.dataframe(display_log[['Waktu', 'Tipe Kejadian']], use_container_width=True)
