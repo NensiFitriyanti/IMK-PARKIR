@@ -26,7 +26,7 @@ def get_default_monitor_message():
         f"<div style='background-color: #e2e3e5; color: #495057; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"
         f"<h1 style='margin: 0; font-size: 80px;'>SCAN HERE</h1>"
         f"<p style='font-size: 30px;'>Arahkan Barcode ke Kamera/Scanner</p>"
-        f"<div style='width: 250px; height: 150px; border: 10px solid #495057; margin: 20px auto; border-radius: 10px;'></div>" # Simulasi Area Scan
+        f"<div style='width: 250px; height: 150px; border: 10px solid #495057; margin: 20px auto; border-radius: 10px;'></div>" 
         f"</div>"
     )
 
@@ -185,10 +185,17 @@ if 'logged_in_user_id' not in st.session_state:
     st.session_state.logged_in_user_id = None
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None 
+    
+# --- PENTING: INISIALISASI MONITOR STATE ---
 if 'monitor_html' not in st.session_state:
     st.session_state.monitor_html = get_default_monitor_message() 
+    
+if 'monitor_type' not in st.session_state: 
+    st.session_state.monitor_type = 'default' # <--- PERBAIKAN: INISIALISASI MONITOR_TYPE
+
 if 'monitor_display_time' not in st.session_state:
     st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
+# -------------------------------------------
 
 # Tombol Logout dan Menu Admin/Monitor
 st.sidebar.title("Menu Aplikasi")
@@ -255,7 +262,7 @@ if st.session_state.app_mode == 'gate_monitor':
         st.rerun()
     st.stop() 
 
-# ----------------- MODE LOGIN / REGISTER / USER DASHBOARD (Tidak ada perubahan) -----------------
+# ----------------- MODE LOGIN / REGISTER / USER DASHBOARD -----------------
 elif st.session_state.app_mode == 'login':
     st.subheader("Selamat Datang! Silakan Login atau Daftar")
     col_l, col_r = st.columns(2)
@@ -499,7 +506,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
             st.error(f"Terjadi masalah saat penghapusan: {e}")
 
 
-# ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN (Tidak ada perubahan) -----------------
+# ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN -----------------
 elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_role == 'admin':
     st.header("Analitik Parkir: Log & Grafik")
     
