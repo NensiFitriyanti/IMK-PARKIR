@@ -5,20 +5,31 @@ import qrcode
 from io import BytesIO
 import os
 
-# --- Konfigurasi dan Data ---
+# --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
-ADMIN_USER = "petugas" # Username tetap untuk login admin
-ADMIN_PASS = "admin123" # Password tetap untuk login admin (Ganti ini di implementasi nyata!)
+ADMIN_USER = "petugas"         # Username tetap untuk login admin/petugas
+ADMIN_PASS = "admin123"        # Password tetap untuk login admin/petugas (HARUS DIUBAH DI REAL-WORLD!)
 
-# --- Fungsi Pembantu (Utilities) ---
+# Kolom yang wajib ada di dalam DataFrame/CSV
+REQUIRED_COLUMNS = ['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status']
+
+# --- FUNGSI PEMBANTU (UTILITIES) ---
 
 def load_data():
-    """Memuat data dari CSV atau membuat DataFrame baru jika file tidak ada."""
+    """Memuat data dari CSV atau membuat DataFrame baru, dan memastikan semua kolom penting ada."""
+    
     if os.path.exists(DATA_FILE):
         df = pd.read_csv(DATA_FILE)
+        
+        # LOGIKA PERBAIKAN KOLOM HILANG (Solusi KeyError)
+        for col in REQUIRED_COLUMNS:
+            if col not in df.columns:
+                # Tambahkan kolom yang hilang dan isi dengan string kosong
+                df[col] = '' 
+        
     else:
-        # Tambahkan kolom 'password'
-        df = pd.DataFrame(columns=['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status'])
+        # Buat DataFrame kosong jika file belum ada
+        df = pd.DataFrame(columns=REQUIRED_COLUMNS)
     
     # Pastikan index diatur ke barcode_id
     df = df.set_index('barcode_id', drop=False)
@@ -39,7 +50,7 @@ def generate_qr_code(data):
     buffer.seek(0)
     return buffer
 
-# --- Inisialisasi Aplikasi dan Session State ---
+# --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
 # Muat data ke Session State
@@ -60,7 +71,7 @@ if st.session_state.app_mode not in ['login', 'register']:
         st.session_state.app_mode = 'login'
         st.session_state.logged_in_user_id = None
         st.session_state.user_role = None
-        st.rerun() # Menggunakan st.rerun() untuk menghindari error
+        st.rerun() # SOLUSI 1: Mengganti st.experimental_rerun()
 
 st.title("🅿️ Aplikasi Dashboard Parkir Barcode")
 st.markdown("---")
@@ -88,24 +99,25 @@ if st.session_state.app_mode == 'login':
                     st.session_state.app_mode = 'admin_dashboard'
                     st.session_state.user_role = 'admin'
                     st.success("Login sebagai Petugas/Admin berhasil!")
-                    st.rerun() # Rerun setelah login admin
+                    st.rerun()
 
                 # Cek login Pengguna Biasa
                 else:
                     user_data = st.session_state.data[st.session_state.data['user_id'] == login_id]
-                    if not user_data.empty and user_data['password'].iloc[0] == login_pass:
+                    # Logika pengecekan password, aman karena load_data() menjamin kolom 'password' ada
+                    if not user_data.empty and user_data['password'].iloc[0] == login_pass: 
                         st.session_state.app_mode = 'user_dashboard'
                         st.session_state.user_role = 'user'
                         st.session_state.logged_in_user_id = user_data.index[0] # Simpan Barcode ID
                         st.success(f"Login pengguna {user_data['name'].iloc[0]} berhasil!")
-                        st.rerun() # Rerun setelah login pengguna
+                        st.rerun()
                     else:
                         st.error("NIM/NIP atau Password salah!")
 
     with col_r:
         if st.button("Daftar Akun Baru (Register)"):
             st.session_state.app_mode = 'register'
-            st.rerun() # Rerun untuk beralih mode
+            st.rerun()
 
 
 # ----------------- MODE REGISTER -----------------
@@ -115,7 +127,7 @@ elif st.session_state.app_mode == 'register':
     # Tombol Kembali
     if st.button("<< Kembali ke Login"):
         st.session_state.app_mode = 'login'
-        st.rerun() # Rerun untuk kembali ke login
+        st.rerun()
         
     with st.form("register_form"):
         name = st.text_input("Nama Lengkap", key="reg_name")
@@ -147,7 +159,7 @@ elif st.session_state.app_mode == 'register':
                     
                     st.success("Pendaftaran berhasil! Silakan Login.")
                     st.session_state.app_mode = 'login' # Arahkan kembali ke login
-                    st.rerun() # Rerun setelah berhasil daftar
+                    st.rerun()
             else:
                 st.error("Semua kolom harus diisi!")
 
@@ -194,7 +206,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     # Logika Scanner (Simulasi)
     with col_scan:
         st.subheader("Simulasi Scanner Gerbang")
-        st.info("Input di bawah ini mensimulasikan data yang dikirim oleh scanner barcode fisik.")
+        st.info("Input ini mensimulasikan data yang dikirim oleh scanner barcode fisik.")
         
         scan_id = st.text_input("Masukkan Barcode ID (Simulasi Scan):").strip()
         scan_button = st.button("PROSES SCAN & BUKA GERBANG")
@@ -239,7 +251,6 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     
     # Tabel Status Parkir
     st.subheader("Tabel Status Parkir Saat Ini")
-    # Hanya tampilkan kolom yang relevan
     display_data = st.session_state.data[['name', 'user_id', 'license_plate', 'vehicle_type', 'status']].copy()
     
     def color_status(val):
