@@ -458,3 +458,4 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
+
