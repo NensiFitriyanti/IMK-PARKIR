@@ -6,11 +6,6 @@ from io import BytesIO
 import os
 from datetime import datetime, timedelta
 import altair as alt
-# --- Import library tambahan untuk membaca QR Code dari gambar ---
-# Kita asumsikan ada library pembaca QR code, namun karena keterbatasan lingkungan,
-# kita akan menyederhanakan logicnya menjadi 'mengambil ID pertama dari gambar'
-# Dalam aplikasi real, Anda akan menggunakan 'pyzbar' atau 'opencv-python'
-# Untuk simulasi, kita akan fokus pada alur input data.
 
 # --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
@@ -81,11 +76,12 @@ def set_monitor_message(html_content, type='default'):
     st.session_state.monitor_html = html_content
     st.session_state.monitor_type = type
 
-# FUNGSI BARU UNTUK MEMPROSES SCAN BARCODE
 def process_scan(scan_id, feedback_placeholder):
     """Logika utama untuk memproses ID Barcode yang diterima."""
-    if not scan_id:
-        feedback_placeholder.error("ID Barcode kosong. Mohon masukkan ID atau scan ulang.")
+    if not scan_id or scan_id in ['simulasi1234']: # Tambahkan simulasi ID agar tidak memproses
+        # Khusus untuk simulasi, jika ID dummy masih ada, jangan proses.
+        if scan_id == 'simulasi1234':
+            feedback_placeholder.error("ID Barcode tidak valid. Mohon lakukan scan ID yang sebenarnya.")
         return
         
     if scan_id in st.session_state.data.index:
@@ -151,6 +147,14 @@ def process_scan(scan_id, feedback_placeholder):
         )
         feedback_placeholder.error("❌ Barcode ID tidak terdaftar!")
 
+# FUNGSI UNTUK MENGUBAH TAB AKTIF
+def set_active_tab():
+    """Menyimpan indeks tab aktif ke session state."""
+    # St.tabs default index (0, 1, 2)
+    # Kita gunakan key yang sama dengan key st.tabs
+    st.session_state.active_scan_tab = st.session_state.scan_tabs_key 
+
+
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
@@ -168,19 +172,21 @@ if 'logged_in_user_id' not in st.session_state:
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None 
 if 'monitor_html' not in st.session_state:
-    # Pesan default saat pertama kali dimuat
     set_monitor_message(
         "<div style='background-color: #e2e3e5; color: #495057; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"\
         "<h1 style='margin: 0; font-size: 80px;'>SCAN BARCODE ANDA</h1>"\
         "<p style='font-size: 30px;'>Mohon Tunggu Petugas Memproses</p>"\
         "</div>"
     )
+# INISIALISASI TAB AKTIF: 0 = Input Teks
+if 'active_scan_tab' not in st.session_state:
+    st.session_state.active_scan_tab = 0
+
 
 # Tombol Logout dan Menu Admin/Monitor
 st.sidebar.title("Menu Aplikasi")
 
 if st.session_state.app_mode == 'gate_monitor':
-    # Jangan tampilkan menu lain jika di mode monitor
     st.sidebar.markdown("**Monitor Sedang Aktif**")
 elif st.session_state.app_mode not in ['login', 'register']:
     if st.session_state.user_role == 'admin':
@@ -191,12 +197,10 @@ elif st.session_state.app_mode not in ['login', 'register']:
             st.session_state.app_mode = 'admin_analytics'
             st.rerun()
         st.sidebar.markdown("---")
-        # --- TOMBOL BARU UNTUK MONITOR ---
         if st.sidebar.button("Buka Monitor Gerbang"):
              st.session_state.app_mode = 'gate_monitor'
              st.rerun()
         st.sidebar.markdown("---")
-        # ----------------------------------
 
     if st.sidebar.button("Logout"):
         st.session_state.app_mode = 'login'
@@ -214,17 +218,15 @@ if st.session_state.app_mode != 'gate_monitor':
 
 # ----------------- MODE MONITOR GERBANG BARU -----------------
 if st.session_state.app_mode == 'gate_monitor':
-    # Halaman monitor layar penuh.
     st.markdown(
         st.session_state.monitor_html, 
         unsafe_allow_html=True
     )
-    # Tombol kembali di sidebar untuk kemudahan
     st.sidebar.markdown("---")
     if st.sidebar.button("Kembali ke Dashboard Admin"):
         st.session_state.app_mode = 'admin_dashboard'
         st.rerun()
-    st.stop() # Hentikan rendering elemen lain di mode ini
+    st.stop() 
 
 # ----------------- MODE LOGIN / REGISTER -----------------
 elif st.session_state.app_mode == 'login':
@@ -378,38 +380,48 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         # Placeholder untuk feedback
         feedback_placeholder = st.empty()
         
-        tab_text, tab_file, tab_camera = st.tabs(["Input Teks ID", "Unggah Barcode Gambar", "Ambil Foto Barcode (Kamera)"])
+        # st.tabs dengan KEY dan CALLBACK
+        tab_text, tab_file, tab_camera = st.tabs(
+            ["Input Teks ID", "Unggah Barcode Gambar", "Ambil Foto Barcode (Kamera)"],
+            key="scan_tabs_key",
+            on_change=set_active_tab,
+            # Tab aktif ditentukan dari session state saat loading
+            # Jika user pindah tab, session state akan diupdate oleh callback
+            # Ini memastikan kamera hanya muncul di tab yang benar
+            selected=st.session_state.active_scan_tab
+        )
 
-        # Input 1: Teks
+        # Input 1: Teks (Index 0)
         with tab_text:
             scan_id_text = st.text_input("Masukkan Barcode ID Manual:", key="admin_scan_id_text").strip()
             if st.button("PROSES DENGAN TEKS"):
                 process_scan(scan_id_text, feedback_placeholder)
 
-        # Input 2: Unggah File
+        # Input 2: Unggah File (Index 1)
         with tab_file:
             uploaded_file = st.file_uploader("Unggah Gambar Barcode/QR Code (.png, .jpg)", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
                 # SIMULASI PEMBACAAN BARCODE DARI GAMBAR
-                # Karena tidak ada library pembaca QR/Barcode, kita simulasikan:
-                # Asumsi ID Barcode adalah 8 digit pertama nama file
                 simulated_id = uploaded_file.name[:8] 
                 st.info(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id}** (berdasarkan nama file).")
                 if st.button("PROSES DENGAN GAMBAR"):
                     process_scan(simulated_id, feedback_placeholder)
 
-        # Input 3: Ambil Foto (Kamera)
+        # Input 3: Ambil Foto (Kamera) (Index 2)
         with tab_camera:
-            camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
-            if camera_image is not None:
-                # SIMULASI PEMBACAAN BARCODE DARI FOTO KAMERA
-                # Kita harus menggunakan ID dummy atau logika sederhana karena tidak ada library QR/Barcode
-                # PENTING: Dalam aplikasi nyata, Anda akan memproses `camera_image` di sini.
-                simulated_id_cam = "simulasi1234" # Ganti dengan logic deteksi asli
-                st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
-                st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
-                if st.button("PROSES DENGAN FOTO"):
-                    process_scan(simulated_id_cam, feedback_placeholder)
+            # KAMERA HANYA MUNCUL JIKA TAB INI AKTIF (Index 2)
+            if st.session_state.active_scan_tab == 2:
+                camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
+                
+                if camera_image is not None:
+                    # SIMULASI PEMBACAAN BARCODE DARI FOTO KAMERA
+                    simulated_id_cam = "simulasi1234" # ID dummy untuk simulasi
+                    st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
+                    st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
+                    if st.button("PROSES DENGAN FOTO"):
+                        process_scan(simulated_id_cam, feedback_placeholder)
+            else:
+                st.markdown("Pilih tab ini untuk mengaktifkan kamera.")
 
 
     # Statistik Dashboard
@@ -433,12 +445,8 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     st.subheader("Tabel Status Parkir Saat Ini")
     display_data = st.session_state.data[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
-    # PERBAIKAN: Paksa konversi kolom waktu ke datetime sebelum menggunakan .dt
-    display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce')
-    display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce')
-    
-    display_data['time_in'] = display_data['time_in'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
-    display_data['time_out'] = display_data['time_out'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
+    display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
+    display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
 
     def color_status(val):
         color = 'lightgreen' if val == 'IN' else 'salmon'
@@ -497,7 +505,6 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
         st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
         display_log = df_filtered[['timestamp', 'event_type']].copy()
         
-        # Pastikan timestamp bertipe datetime sebelum menggunakan .dt
         display_log['timestamp'] = pd.to_datetime(display_log['timestamp'], errors='coerce') 
         
         display_log['Waktu'] = display_log['timestamp'].dt.strftime('%d/%m/%Y %H:%M:%S')
