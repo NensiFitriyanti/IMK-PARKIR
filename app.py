@@ -267,88 +267,19 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
 elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_role == 'admin':
     st.header("Dashboard Petugas Parkir (Akses Admin)")
     
-    col_scan, col_stats = st.columns([1, 1])
+    # Membagi ruang atas menjadi 3 kolom: Monitor (4), Input Petugas (2), Statistik (2)
+    col_monitor, col_scan, col_stats = st.columns([4, 2, 2])
 
-    with col_scan:
-        st.subheader("Simulasi Scanner Gerbang")
-        scan_id = st.text_input("Masukkan Barcode ID:").strip()
-        
+    with col_monitor:
+        st.subheader("MONITOR PENGGUNA (Layar Gerbang)")
         # --- PENAMBAHAN: Tempatkan pesan monitor di sini ---
         monitor_message_placeholder = st.empty()
         # --------------------------------------------------
-
+    
+    with col_scan:
+        st.subheader("Kontrol Scanner")
+        scan_id = st.text_input("Masukkan Barcode ID:", key="admin_scan_id").strip()
         scan_button = st.button("PROSES SCAN & BUKA GERBANG")
-        
-        if scan_button and scan_id:
-            if scan_id in st.session_state.data.index:
-                user_row = st.session_state.data.loc[scan_id]
-                current_status = user_row['status']
-                current_time = datetime.now()
-                name = user_row['name']
-                
-                # Logika Pintu Masuk/Keluar
-                if current_status == 'OUT':
-                    # Aksi MASUK
-                    new_status = 'IN'
-                    action = "MASUK"
-                    
-                    st.session_state.data.loc[scan_id, 'status'] = new_status
-                    st.session_state.data.loc[scan_id, 'time_in'] = current_time 
-                    st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      
-                    st.session_state.data.loc[scan_id, 'duration'] = ''          
-                    save_data(st.session_state.data, DATA_FILE)
-                    
-                    # Tambahkan ke log
-                    add_to_log(scan_id, name, 'IN', current_time)
-
-                    # --- PESAN MONITOR MASUK ---
-                    monitor_message_placeholder.success(
-                        f"✅ GERBANG TERBUKA! Silakan **MASUK**, {name}. Selamat datang!"
-                    )
-                    st.balloons()
-                    # ---------------------------
-                    
-                else: # Status is 'IN'
-                    # Aksi KELUAR
-                    new_status = 'OUT'
-                    action = "KELUAR"
-                    
-                    time_in = st.session_state.data.loc[scan_id, 'time_in']
-                    
-                    if pd.notna(time_in):
-                        duration = current_time - time_in
-                        duration_str = str(duration).split('.')[0] 
-                    else:
-                        duration_str = "0:00:00 (Error Waktu Masuk)"
-                    
-                    st.session_state.data.loc[scan_id, 'status'] = new_status
-                    st.session_state.data.loc[scan_id, 'time_out'] = current_time 
-                    st.session_state.data.loc[scan_id, 'duration'] = duration_str 
-                    save_data(st.session_state.data, DATA_FILE)
-                    
-                    # Tambahkan ke log
-                    add_to_log(scan_id, name, 'OUT', current_time)
-
-                    # --- PESAN MONITOR KELUAR ---
-                    monitor_message_placeholder.info(
-                        f"🚪 GERBANG TERBUKA! Selamat **KELUAR**, {name}. Durasi Parkir: {duration_str}."
-                    )
-                    # ----------------------------
-
-                # Kita tidak menggunakan st.rerun() di sini agar pesan monitor tetap terlihat
-                # sampai scan berikutnya atau refresh manual.
-            
-            else:
-                monitor_message_placeholder.error("❌ Barcode ID tidak terdaftar!")
-            
-        else:
-            # Pesan default di monitor jika belum ada scan
-            if monitor_message_placeholder.empty:
-                 monitor_message_placeholder.markdown(
-                    "<h3 style='text-align: center; color: gray;'>Siap untuk Scan Berikutnya...</h3>", 
-                    unsafe_allow_html=True
-                )
-
 
     # Statistik Dashboard
     with col_stats:
@@ -357,12 +288,101 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         parked_count = len(st.session_state.data[st.session_state.data['status'] == 'IN'])
         out_count = total_users - parked_count
 
-        col_met1, col_met2, col_met3 = st.columns(3)
-        col_met1.metric(label="Total Pengguna Terdaftar", value=total_users)
-        col_met2.metric(label="Sedang Parkir (IN)", value=parked_count)
-        col_met3.metric(label="Sudah Keluar (OUT)", value=out_count)
+        st.metric(label="Total Pengguna Terdaftar", value=total_users)
+        st.metric(label="Sedang Parkir (IN)", value=parked_count)
+        st.metric(label="Sudah Keluar (OUT)", value=out_count)
 
-    st.markdown("---")
+    # Logika Scanner
+    if scan_button and scan_id:
+        if scan_id in st.session_state.data.index:
+            user_row = st.session_state.data.loc[scan_id]
+            current_status = user_row['status']
+            current_time = datetime.now()
+            name = user_row['name']
+            
+            # Logika Pintu Masuk/Keluar
+            if current_status == 'OUT':
+                # Aksi MASUK
+                new_status = 'IN'
+                action = "MASUK"
+                
+                st.session_state.data.loc[scan_id, 'status'] = new_status
+                st.session_state.data.loc[scan_id, 'time_in'] = current_time 
+                st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      
+                st.session_state.data.loc[scan_id, 'duration'] = ''          
+                save_data(st.session_state.data, DATA_FILE)
+                
+                # Tambahkan ke log
+                add_to_log(scan_id, name, 'IN', current_time)
+
+                # --- PESAN MONITOR MASUK ---
+                with monitor_message_placeholder.container():
+                    st.markdown(
+                        f"<div style='background-color: #d4edda; color: #155724; padding: 20px; border-radius: 5px; text-align: center;'>"\
+                        f"<h1 style='margin: 0;'>✅ SILAKAN MASUK</h1>"\
+                        f"<p style='font-size: 24px; font-weight: bold;'>{name} - {user_row['license_plate']}</p>"\
+                        f"</div>", 
+                        unsafe_allow_html=True
+                    )
+                st.toast(f"GERBANG MASUK: {name}", icon='✅')
+                # ---------------------------
+                
+            else: # Status is 'IN'
+                # Aksi KELUAR
+                new_status = 'OUT'
+                action = "KELUAR"
+                
+                time_in = st.session_state.data.loc[scan_id, 'time_in']
+                
+                if pd.notna(time_in):
+                    duration = current_time - time_in
+                    duration_str = str(duration).split('.')[0] 
+                else:
+                    duration_str = "0:00:00 (Error Waktu Masuk)"
+                
+                st.session_state.data.loc[scan_id, 'status'] = new_status
+                st.session_state.data.loc[scan_id, 'time_out'] = current_time 
+                st.session_state.data.loc[scan_id, 'duration'] = duration_str 
+                save_data(st.session_state.data, DATA_FILE)
+                
+                # Tambahkan ke log
+                add_to_log(scan_id, name, 'OUT', current_time)
+
+                # --- PESAN MONITOR KELUAR ---
+                with monitor_message_placeholder.container():
+                    st.markdown(
+                        f"<div style='background-color: #fff3cd; color: #856404; padding: 20px; border-radius: 5px; text-align: center;'>"\
+                        f"<h1 style='margin: 0;'>🚪 TERIMA KASIH</h1>"\
+                        f"<p style='font-size: 24px; font-weight: bold;'>{name} | Durasi: {duration_str}</p>"\
+                        f"</div>", 
+                        unsafe_allow_html=True
+                    )
+                st.toast(f"GERBANG KELUAR: {name}", icon='🚪')
+                # ----------------------------
+
+        else:
+            # Pesan Barcode Tidak Terdaftar
+            with monitor_message_placeholder.container():
+                 st.markdown(
+                    f"<div style='background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; text-align: center;'>"\
+                    f"<h1 style='margin: 0;'>❌ ERROR!</h1>"\
+                    f"<p style='font-size: 24px; font-weight: bold;'>ID BARCODE TIDAK VALID</p>"\
+                    f"</div>", 
+                    unsafe_allow_html=True
+                )
+    
+    # Pesan default di monitor jika belum ada scan yang berhasil atau setelah refresh
+    elif monitor_message_placeholder.empty:
+         with monitor_message_placeholder.container():
+             st.markdown(
+                "<div style='background-color: #e2e3e5; color: #495057; padding: 20px; border-radius: 5px; text-align: center;'>"\
+                "<h1 style='margin: 0;'>SCAN BARCODE ANDA</h1>"\
+                "<p style='font-size: 24px;'>Siap untuk Transaksi Berikutnya...</p>"\
+                "</div>", 
+                unsafe_allow_html=True
+            )
+            
+    st.markdown("---") # Garis pemisah antara area monitor dan tabel data
     
     # Tabel Status Parkir & Hapus Akun
     st.subheader("Tabel Status Parkir Saat Ini")
