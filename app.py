@@ -79,7 +79,7 @@ def set_monitor_message(html_content, type='default'):
 def process_scan(scan_id, feedback_placeholder):
     """Logika utama untuk memproses ID Barcode yang diterima."""
     # Menghindari pemrosesan jika ID simulasi masih ada tanpa ada logic asli
-    if not scan_id or scan_id == "simulasi1234": 
+    if not scan_id or scan_id in ["simulasi1234"]: 
         feedback_placeholder.error("ID Barcode kosong atau tidak valid.")
         # Tampilkan pesan default di monitor jika error
         set_monitor_message(
@@ -177,6 +177,14 @@ if 'monitor_html' not in st.session_state:
         "<p style='font-size: 30px;'>Mohon Tunggu Petugas Memproses</p>"\
         "</div>"
     )
+
+# PERBAIKAN PENTING: Inisialisasi key st.tabs dengan nilai string default.
+# Nilai default harus sama persis dengan salah satu nama tab.
+TABS_KEY_NAME = "active_scan_tab_key"
+DEFAULT_TAB_NAME = "Input Teks ID"
+
+if TABS_KEY_NAME not in st.session_state:
+    st.session_state[TABS_KEY_NAME] = DEFAULT_TAB_NAME 
 
 # Tombol Logout dan Menu Admin/Monitor
 st.sidebar.title("Menu Aplikasi")
@@ -380,8 +388,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         # st.tabs dengan KEY
         tab_text, tab_file, tab_camera = st.tabs(
             ["Input Teks ID", "Unggah Barcode Gambar", "Ambil Foto Barcode (Kamera)"],
-            # Key akan menyimpan NAMA TAB yang dipilih saat ini.
-            key="active_scan_tab_key", 
+            key=TABS_KEY_NAME, 
         )
 
         # Input 1: Teks
@@ -402,8 +409,10 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
         # Input 3: Ambil Foto (Kamera)
         with tab_camera:
-            # KAMERA HANYA MUNCUL JIKA KEY SESUAI DENGAN NAMA TAB INI
-            if st.session_state.active_scan_tab_key == "Ambil Foto Barcode (Kamera)":
+            # PENGAMANAN: Cek apakah key sudah ada dan nilainya sesuai
+            current_tab_name = st.session_state.get(TABS_KEY_NAME, DEFAULT_TAB_NAME)
+            
+            if current_tab_name == "Ambil Foto Barcode (Kamera)":
                 camera_image = st.camera_input("Arahkan Kamera ke Barcode", key="camera_input_key", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
                 
                 if camera_image is not None:
