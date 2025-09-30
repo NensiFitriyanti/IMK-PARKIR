@@ -272,6 +272,11 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     with col_scan:
         st.subheader("Simulasi Scanner Gerbang")
         scan_id = st.text_input("Masukkan Barcode ID:").strip()
+        
+        # --- PENAMBAHAN: Tempatkan pesan monitor di sini ---
+        monitor_message_placeholder = st.empty()
+        # --------------------------------------------------
+
         scan_button = st.button("PROSES SCAN & BUKA GERBANG")
         
         if scan_button and scan_id:
@@ -296,7 +301,12 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                     # Tambahkan ke log
                     add_to_log(scan_id, name, 'IN', current_time)
 
-                    st.success(f"✅ GERBANG TERBUKA! Selamat {action}, {name}. Status baru: DI DALAM.")
+                    # --- PESAN MONITOR MASUK ---
+                    monitor_message_placeholder.success(
+                        f"✅ GERBANG TERBUKA! Silakan **MASUK**, {name}. Selamat datang!"
+                    )
+                    st.balloons()
+                    # ---------------------------
                     
                 else: # Status is 'IN'
                     # Aksi KELUAR
@@ -319,11 +329,26 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                     # Tambahkan ke log
                     add_to_log(scan_id, name, 'OUT', current_time)
 
-                    st.info(f"🚪 GERBANG TERBUKA! Selamat {action}, {name}. Durasi Parkir: {duration_str}. Status baru: DI LUAR.")
-                
-                st.rerun()
+                    # --- PESAN MONITOR KELUAR ---
+                    monitor_message_placeholder.info(
+                        f"🚪 GERBANG TERBUKA! Selamat **KELUAR**, {name}. Durasi Parkir: {duration_str}."
+                    )
+                    # ----------------------------
+
+                # Kita tidak menggunakan st.rerun() di sini agar pesan monitor tetap terlihat
+                # sampai scan berikutnya atau refresh manual.
+            
             else:
-                st.error("❌ Barcode ID tidak terdaftar!")
+                monitor_message_placeholder.error("❌ Barcode ID tidak terdaftar!")
+            
+        else:
+            # Pesan default di monitor jika belum ada scan
+            if monitor_message_placeholder.empty:
+                 monitor_message_placeholder.markdown(
+                    "<h3 style='text-align: center; color: gray;'>Siap untuk Scan Berikutnya...</h3>", 
+                    unsafe_allow_html=True
+                )
+
 
     # Statistik Dashboard
     with col_stats:
@@ -407,7 +432,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
         st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
         display_log = df_filtered[['timestamp', 'event_type']].copy()
         
-        # PERBAIKAN: Pastikan timestamp bertipe datetime sebelum menggunakan .dt
+        # Pastikan timestamp bertipe datetime sebelum menggunakan .dt
         display_log['timestamp'] = pd.to_datetime(display_log['timestamp'], errors='coerce') 
         
         display_log['Waktu'] = display_log['timestamp'].dt.strftime('%d/%m/%Y %H:%M:%S')
@@ -458,4 +483,3 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
-
