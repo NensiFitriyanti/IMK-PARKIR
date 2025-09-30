@@ -7,13 +7,14 @@ import os
 from datetime import datetime, timedelta
 import altair as alt
 import time 
+import numpy as np # Digunakan untuk pd.NaT
 
 # --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
 LOG_FILE = 'parking_log.csv' 
 ADMIN_USER = "petugas"         
 ADMIN_PASS = "admin123"        
-MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses
+MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor
 
 REQUIRED_USER_COLUMNS = ['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status', 'time_in', 'time_out', 'duration']
 REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_type']
@@ -23,7 +24,7 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 def get_default_monitor_message():
     """Mengembalikan HTML untuk pesan monitor default (Scan Here)."""
     return (
-        f"<div style='background-color: #e2e3e5; color: #495057; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"
+        f"<div style='background-color: #f1f3f5; color: #495057; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"
         f"<h1 style='margin: 0; font-size: 80px;'>SCAN HERE</h1>"
         f"<p style='font-size: 30px;'>Arahkan Barcode ke Kamera/Scanner</p>"
         f"<div style='width: 250px; height: 150px; border: 10px solid #495057; margin: 20px auto; border-radius: 10px;'></div>" 
@@ -38,20 +39,29 @@ def load_data(file_name, required_cols):
     if os.path.exists(file_name):
         df = pd.read_csv(file_name)
         
+        # Tambahkan kolom yang hilang jika ada
         for col in required_cols:
             if col not in df.columns:
                 df[col] = '' 
         
+        # Terapkan tipe data yang konsisten
         for col in ['user_id', 'name', 'password']:
             if col in df.columns:
                  df[col] = df[col].astype(str).fillna('')
             
+        # Konversi kolom waktu ke datetime
         for col in ['timestamp', 'time_in', 'time_out']:
             if col in df.columns:
                 df[col] = pd.to_datetime(df[col], errors='coerce')
             
+        # Set index setelah memuat
+        if 'barcode_id' in df.columns:
+            df = df.set_index('barcode_id', drop=False)
+            
     else:
         df = pd.DataFrame(columns=required_cols)
+        if 'barcode_id' in required_cols:
+             df.set_index('barcode_id', drop=False, inplace=True)
     
     return df
 
@@ -79,7 +89,9 @@ def add_to_log(barcode_id, name, event_type, timestamp):
         'timestamp': timestamp,
         'event_type': event_type
     }
-    st.session_state.log.loc[len(st.session_state.log)] = new_log
+    # Menggunakan pd.concat atau .loc untuk menambah baris
+    new_log_df = pd.DataFrame([new_log], columns=st.session_state.log.columns)
+    st.session_state.log = pd.concat([st.session_state.log, new_log_df], ignore_index=True)
     save_data(st.session_state.log, LOG_FILE)
 
 def set_monitor_message(html_content, type='default'):
@@ -93,6 +105,7 @@ def process_scan(scan_id, feedback_placeholder):
     """Logika utama untuk memproses ID Barcode yang diterima."""
     
     # Reset monitor_display_time segera saat scan dimulai
+    # Ini memastikan timer akan dimulai ulang, walau sebenarnya st.rerun sudah memastikan itu.
     st.session_state.monitor_display_time = datetime.now() 
     
     if not scan_id or scan_id in ["simulasi1234"]: 
@@ -122,7 +135,7 @@ def process_scan(scan_id, feedback_placeholder):
             save_data(st.session_state.data, DATA_FILE)
             add_to_log(scan_id, name, 'IN', current_time)
 
-            # Update Monitor (Pesan Selamat Datang sesuai permintaan)
+            # Update Monitor (Pesan Selamat Datang)
             set_monitor_message(
                 f"<div style='background-color: #d4edda; color: #155724; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"\
                 f"<h1 style='margin: 0; font-size: 80px;'>✅ SELAMAT DATANG!</h1>"\
@@ -136,7 +149,8 @@ def process_scan(scan_id, feedback_placeholder):
             # Aksi KELUAR
             time_in = st.session_state.data.loc[scan_id, 'time_in']
             
-            if pd.notna(time_in):
+            # Pastikan time_in adalah datetime yang valid
+            if pd.notna(time_in) and isinstance(time_in, datetime):
                 duration = current_time - time_in
                 duration_str = str(duration).split('.')[0] 
             else:
@@ -148,7 +162,7 @@ def process_scan(scan_id, feedback_placeholder):
             save_data(st.session_state.data, DATA_FILE)
             add_to_log(scan_id, name, 'OUT', current_time)
 
-            # Update Monitor (Pesan Terima Kasih sesuai permintaan)
+            # Update Monitor (Pesan Sampai Jumpa)
             set_monitor_message(
                 f"<div style='background-color: #fff3cd; color: #856404; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"\
                 f"<h1 style='margin: 0; font-size: 80px;'>🚪 SAMPAI JUMPA LAGI</h1>"\
@@ -174,7 +188,7 @@ st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
 # Muat data utama dan log
 if 'data' not in st.session_state:
-    st.session_state.data = load_data(DATA_FILE, REQUIRED_USER_COLUMNS).set_index('barcode_id', drop=False)
+    st.session_state.data = load_data(DATA_FILE, REQUIRED_USER_COLUMNS)
 if 'log' not in st.session_state:
     st.session_state.log = load_data(LOG_FILE, REQUIRED_LOG_COLUMNS)
 
@@ -186,12 +200,12 @@ if 'logged_in_user_id' not in st.session_state:
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None 
     
-# --- PENTING: INISIALISASI MONITOR STATE ---
+# --- PENTING: INISIALISASI MONITOR STATE (MENGATASI AttributeError) ---
 if 'monitor_html' not in st.session_state:
     st.session_state.monitor_html = get_default_monitor_message() 
     
 if 'monitor_type' not in st.session_state: 
-    st.session_state.monitor_type = 'default' # <--- PERBAIKAN: INISIALISASI MONITOR_TYPE
+    st.session_state.monitor_type = 'default' 
 
 if 'monitor_display_time' not in st.session_state:
     st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
@@ -202,6 +216,9 @@ st.sidebar.title("Menu Aplikasi")
 
 if st.session_state.app_mode == 'gate_monitor':
     st.sidebar.markdown("**Monitor Sedang Aktif**")
+    if st.sidebar.button("Kembali ke Dashboard Admin"):
+        st.session_state.app_mode = 'admin_dashboard'
+        st.rerun()
 elif st.session_state.app_mode not in ['login', 'register']:
     if st.session_state.user_role == 'admin':
         if st.sidebar.button("Dashboard Petugas"):
@@ -230,7 +247,7 @@ if st.session_state.app_mode != 'gate_monitor':
 # FUNGSI APLIKASI BERDASARKAN MODE
 # =================================================================
 
-# ----------------- MODE MONITOR GERBANG BARU -----------------
+# ----------------- MODE MONITOR GERBANG -----------------
 if st.session_state.app_mode == 'gate_monitor':
     
     # Logika Timer Reset Pesan
@@ -249,18 +266,13 @@ if st.session_state.app_mode == 'gate_monitor':
         unsafe_allow_html=True
     )
     
-    # Jika pesan bukan default, gunakan st.time.sleep untuk menunda rerun berikutnya
-    # Hal ini agar Streamlit tidak memanggil reran terlalu cepat, tetapi tetap ada
-    # proses pengecekan timer setiap 1 detik.
+    # Jika pesan bukan default (sedang tampil sukses/error), tidur sebentar
+    # lalu panggil rerun agar logika timer di atas terus dievaluasi.
     if st.session_state.monitor_type != 'default':
-        time.sleep(1) 
-        st.rerun() 
+        time.sleep(1) # Tunggu 1 detik
+        st.rerun() # Paksa Streamlit untuk menjalankan ulang skrip dan mengecek waktu yang tersisa
     
-    st.sidebar.markdown("---")
-    if st.sidebar.button("Kembali ke Dashboard Admin"):
-        st.session_state.app_mode = 'admin_dashboard'
-        st.rerun()
-    st.stop() 
+    st.stop() # Hentikan eksekusi di sini agar hanya monitor yang tampil
 
 # ----------------- MODE LOGIN / REGISTER / USER DASHBOARD -----------------
 elif st.session_state.app_mode == 'login':
@@ -382,7 +394,11 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
             st.markdown(f"**Waktu Masuk:** Belum ada data masuk.")
             
         if user_data['status'] == 'OUT' and user_data['duration']:
-            st.markdown(f"**Waktu Keluar:** {user_data['time_out'].strftime('%d %b %Y, %H:%M:%S')}")
+            # Pastikan time_out bukan NaT sebelum format
+            if pd.notna(user_data['time_out']):
+                 st.markdown(f"**Waktu Keluar:** {user_data['time_out'].strftime('%d %b %Y, %H:%M:%S')}")
+            else:
+                 st.markdown(f"**Waktu Keluar:** -")
             st.success(f"**Durasi Parkir:** {user_data['duration']}")
 
     with col_qr:
@@ -419,29 +435,42 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
             scan_id_text = st.text_input("Masukkan Barcode ID Manual:", key="admin_scan_id_text").strip()
             if st.button("PROSES DENGAN TEKS"):
                 process_scan(scan_id_text, feedback_placeholder)
-                # PENTING: Panggil rerun agar monitor segera ter-update jika berada di tab lain
+                
+                # --- PERBAIKAN: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
+                st.session_state.app_mode = 'gate_monitor' 
                 st.rerun() 
+                # -----------------------------------------------------------------
 
         # Input 2: Unggah File
         with tab_file:
             uploaded_file = st.file_uploader("Unggah Gambar Barcode/QR Code (.png, .jpg)", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
-                simulated_id = uploaded_file.name[:8]
+                # Simulasi ID dari nama file (Harusnya menggunakan library Barcode Scanner)
+                simulated_id = uploaded_file.name.split('.')[0] 
                 st.info(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id}** (berdasarkan nama file).")
                 if st.button("PROSES DENGAN GAMBAR"):
                     process_scan(simulated_id, feedback_placeholder)
-                    st.rerun() 
+                    
+                    # --- PERBAIKAN: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
+                    st.session_state.app_mode = 'gate_monitor' 
+                    st.rerun()
+                    # -----------------------------------------------------------------
 
         # Input 3: Ambil Foto (Kamera)
         with tab_camera:
             camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
             if camera_image is not None:
-                simulated_id_cam = "simulasi1234"
+                # Simulasi ID (Harusnya menggunakan library Barcode Scanner)
+                simulated_id_cam = "simulasi_camera_id_12345" 
                 st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
                 st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
                 if st.button("PROSES DENGAN FOTO"):
                     process_scan(simulated_id_cam, feedback_placeholder)
-                    st.rerun() 
+                    
+                    # --- PERBAIKAN: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
+                    st.session_state.app_mode = 'gate_monitor' 
+                    st.rerun()
+                    # -----------------------------------------------------------------
 
 
     # Statistik Dashboard
@@ -462,13 +491,12 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     
     # Tabel Status Parkir & Hapus Akun
     st.subheader("Tabel Status Parkir Saat Ini")
+    # Buat copy data untuk ditampilkan
     display_data = st.session_state.data[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
-    display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce')
-    display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce')
-    
-    display_data['time_in'] = display_data['time_in'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
-    display_data['time_out'] = display_data['time_out'].dt.strftime('%H:%M:%S, %d/%m').fillna('-')
+    # Format kolom waktu
+    display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
+    display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
 
     def color_status(val):
         color = 'lightgreen' if val == 'IN' else 'salmon'
@@ -521,7 +549,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     selected_name = st.selectbox("Filter berdasarkan Pengguna:", user_names)
 
     if selected_name != 'Semua Pengguna':
-        df_filtered = df_log[df_log['name'] == selected_name]
+        df_filtered = df_log[df_log['name'] == selected_name].copy()
         
         # Tampilkan Log Spesifik
         st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
@@ -535,9 +563,13 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
         st.markdown("---")
 
     else:
-        df_filtered = df_log
+        df_filtered = df_log.copy()
         st.subheader("Grafik Total Kejadian Parkir")
 
+    # Pastikan 'timestamp' adalah datetime sebelum filtering
+    df_filtered['timestamp'] = pd.to_datetime(df_filtered['timestamp'], errors='coerce')
+    df_filtered.dropna(subset=['timestamp'], inplace=True)
+    
     # --- Filter Grafik Harian/Mingguan/Bulanan/Tahunan ---
     time_granularity = st.radio(
         "Pilih Granularitas Grafik:", 
