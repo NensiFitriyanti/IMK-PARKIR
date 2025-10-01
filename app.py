@@ -9,6 +9,7 @@ import altair as alt
 import numpy as np
 import time
 import bcrypt
+import base64 # <-- PASTIKAN INI ADA!
 
 # --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
@@ -39,37 +40,51 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 
 
 # -----------------------------------------------------------------------------
-# >>> PENAMBAHAN KODE UNTUK LATAR BELAKANG DIMULAI DI SINI <<<
+# >>> FUNGSI UNTUK LATAR BELAKANG DIMULAI DI SINI <<<
 # -----------------------------------------------------------------------------
-def set_background(BG-FASIKOM.jpeg):
-    """Menyuntikkan CSS untuk mengatur gambar latar belakang."""
+
+def get_base64_of_bin_file(bin_file):
+    """Membaca file dan mengkonversinya menjadi Base64 string."""
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        st.error(f"Error: File gambar '{bin_file}' tidak ditemukan. Pastikan nama file dan lokasinya sudah benar.")
+        return None
+
+def set_background(image_path):
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64."""
     
-    # Keterangan Penting: Pastikan file BG-FASILKOM.jpeg ada di direktori yang sama!
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url("{image_url}");
-            background-size: cover; /* Memastikan gambar menutupi seluruh background */
-            background-attachment: fixed; /* Membuat gambar tetap saat scroll */
-            background-position: center; /* Memposisikan gambar di tengah */
-        }}
-        /* Menyesuaikan Sidebar agar konten tetap terbaca */
-        [data-testid="stSidebar"] {{
-            background-color: rgba(255, 255, 255, 0.9); /* Latar Putih transparan */
-            border-right: 1px solid #ccc;
-        }}
-        /* Atur warna teks agar tetap terbaca (misalnya menjadi lebih gelap) */
-        h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
-            color: #333333; 
-            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    base64_img = get_base64_of_bin_file(image_path)
+    
+    if base64_img:
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
+                background-image: url("data:image/jpeg;base64,{base64_img}");
+                background-size: cover; 
+                background-attachment: fixed; 
+                background-position: center;
+            }}
+            /* Menyesuaikan Sidebar agar konten tetap terbaca */
+            [data-testid="stSidebar"] {{
+                background-color: rgba(255, 255, 255, 0.9); /* Latar Putih transparan */
+                border-right: 1px solid #ccc;
+            }}
+            /* Atur warna teks agar tetap terbaca */
+            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
+                color: #333333; 
+                text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
 # -----------------------------------------------------------------------------
-# >>> PENAMBAHAN KODE UNTUK LATAR BELAKANG SELESAI DI SINI <<<
+# >>> FUNGSI UNTUK LATAR BELAKANG SELESAI DI SINI <<<
 # -----------------------------------------------------------------------------
 
 
@@ -836,4 +851,3 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
-
