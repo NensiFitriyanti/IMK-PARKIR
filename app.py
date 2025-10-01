@@ -128,11 +128,10 @@ def set_monitor_message(html_content, type='default'):
 def process_scan(scan_id, feedback_placeholder):
     """
     Logika utama untuk memproses ID Barcode yang diterima.
-    Fungsi ini sekarang TIDAK memanggil st.rerun(). 
-    Tugas rerun diserahkan ke bagian pemanggil (Dashboard Admin)
-    untuk memastikan transisi mode terjadi.
+    Fungsi ini akan mengatur pesan monitor.
     """
     
+    # Check 1: ID Barcode kosong atau simulasi
     if not scan_id or scan_id in ["simulasi1234", "simulasi_camera_id_12345"]: 
         feedback_placeholder.error("ID Barcode kosong atau tidak valid.")
         set_monitor_message(
@@ -141,9 +140,12 @@ def process_scan(scan_id, feedback_placeholder):
             f"<p style='font-size: 40px; font-weight: bold;'>BARCODE TIDAK VALID / KOSONG</p>"\
             f"</div>", 'ERROR'
         )
-        # return True untuk menunjukkan bahwa pesan monitor sudah diatur
-        return True
+        # PENTING: Paksakan transisi ke Monitor
+        st.session_state.app_mode = 'gate_monitor'
+        return 
+
         
+    # Check 2: ID Barcode terdaftar
     if scan_id in st.session_state.data.index:
         user_row = st.session_state.data.loc[scan_id]
         current_status = user_row['status']
@@ -198,8 +200,22 @@ def process_scan(scan_id, feedback_placeholder):
             )
             feedback_placeholder.info(f"GERBANG TERBUKA! {name} keluar. Durasi: {duration_str}")
         
-        # return True untuk menunjukkan bahwa pesan monitor sudah diatur
-        return True
+        # PENTING: Paksakan transisi ke Monitor setelah status berhasil diubah
+        st.session_state.app_mode = 'gate_monitor'
+        return 
+
+    else:
+        # Pesan Barcode Tidak Terdaftar
+        set_monitor_message(
+            f"<div style='background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"\
+            f"<h1 style='margin: 0; font-size: 80px;'>❌ ERROR!</h1>"\
+            f"<p style='font-size: 40px; font-weight: bold;'>BARCODE TIDAK TERDAFTAR</p>"\
+            f"</div>", 'ERROR'
+        )
+        feedback_placeholder.error("❌ Barcode ID tidak terdaftar!")
+        # PENTING: Paksakan transisi ke Monitor
+        st.session_state.app_mode = 'gate_monitor'
+        return
 
     else:
         # Pesan Barcode Tidak Terdaftar
@@ -764,3 +780,4 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
+
