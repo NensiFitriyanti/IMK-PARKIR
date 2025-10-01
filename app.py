@@ -126,7 +126,12 @@ def set_monitor_message(html_content, type='default'):
     st.session_state.monitor_display_time = datetime.now() 
 
 def process_scan(scan_id, feedback_placeholder):
-    """Logika utama untuk memproses ID Barcode yang diterima."""
+    """
+    Logika utama untuk memproses ID Barcode yang diterima.
+    Fungsi ini sekarang TIDAK memanggil st.rerun(). 
+    Tugas rerun diserahkan ke bagian pemanggil (Dashboard Admin)
+    untuk memastikan transisi mode terjadi.
+    """
     
     if not scan_id or scan_id in ["simulasi1234", "simulasi_camera_id_12345"]: 
         feedback_placeholder.error("ID Barcode kosong atau tidak valid.")
@@ -136,7 +141,8 @@ def process_scan(scan_id, feedback_placeholder):
             f"<p style='font-size: 40px; font-weight: bold;'>BARCODE TIDAK VALID / KOSONG</p>"\
             f"</div>", 'ERROR'
         )
-        return
+        # return True untuk menunjukkan bahwa pesan monitor sudah diatur
+        return True
         
     if scan_id in st.session_state.data.index:
         user_row = st.session_state.data.loc[scan_id]
@@ -191,6 +197,9 @@ def process_scan(scan_id, feedback_placeholder):
                 f"</div>", 'OUT'
             )
             feedback_placeholder.info(f"GERBANG TERBUKA! {name} keluar. Durasi: {duration_str}")
+        
+        # return True untuk menunjukkan bahwa pesan monitor sudah diatur
+        return True
 
     else:
         # Pesan Barcode Tidak Terdaftar
@@ -201,6 +210,8 @@ def process_scan(scan_id, feedback_placeholder):
             f"</div>", 'ERROR'
         )
         feedback_placeholder.error("❌ Barcode ID tidak terdaftar!")
+        # return True untuk menunjukkan bahwa pesan monitor sudah diatur
+        return True
 
 
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
@@ -475,8 +486,8 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         with tab_text:
             scan_id_text = st.text_input("Masukkan Barcode ID Manual:", key="admin_scan_id_text").strip()
             if st.button("PROSES DENGAN TEKS"):
+                # Panggil process_scan, lalu paksa transisi mode dan rerun
                 process_scan(scan_id_text, feedback_placeholder)
-                
                 st.session_state.app_mode = 'gate_monitor' 
                 st.rerun() 
                 
@@ -487,8 +498,8 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                 simulated_id = uploaded_file.name.split('.')[0] 
                 st.info(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id}** (berdasarkan nama file).")
                 if st.button("PROSES DENGAN GAMBAR"):
+                    # Panggil process_scan, lalu paksa transisi mode dan rerun
                     process_scan(simulated_id, feedback_placeholder)
-                    
                     st.session_state.app_mode = 'gate_monitor' 
                     st.rerun()
                     
@@ -496,12 +507,13 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         with tab_camera:
             camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
             if camera_image is not None:
+                # Menggunakan ID simulasi. Pastikan ini ID yang valid jika Anda mengujinya.
                 simulated_id_cam = "simulasi1234" 
                 st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
                 st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
                 if st.button("PROSES DENGAN FOTO"):
+                    # Panggil process_scan, lalu paksa transisi mode dan rerun
                     process_scan(simulated_id_cam, feedback_placeholder)
-                    
                     st.session_state.app_mode = 'gate_monitor' 
                     st.rerun()
 
