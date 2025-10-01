@@ -262,6 +262,11 @@ elif st.session_state.app_mode not in ['login', 'register']:
         if st.sidebar.button("Analitik & Grafik"):
             st.session_state.app_mode = 'admin_analytics'
             st.rerun()
+        # --- MENU BARU: RESET PASSWORD ---
+        if st.sidebar.button("Reset Password Pengguna"):
+            st.session_state.app_mode = 'admin_reset_password'
+            st.rerun()
+        # ---------------------------------
         st.sidebar.markdown("---")
         if st.sidebar.button("Buka Monitor Gerbang"):
              st.session_state.app_mode = 'gate_monitor'
@@ -312,6 +317,7 @@ if st.session_state.app_mode == 'gate_monitor':
 
 # ----------------- MODE LOGIN / REGISTER / USER DASHBOARD -----------------
 elif st.session_state.app_mode == 'login':
+# ... (Logika Login)
     st.subheader("Selamat Datang! Silakan Login atau Daftar")
     col_l, col_r = st.columns(2)
 
@@ -555,7 +561,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     )
     
     # =================================================================
-    # OPSI ADMIN: MIGRASI PASSWORD LAMA (SOLUSI PENGGUNA TIDAK BISA LOGIN)
+    # OPSI ADMIN: MIGRASI PASSWORD LAMA (TETAP DI SINI KARENA PENTING & SEKALI JALAN)
     # =================================================================
     st.markdown("---")
     st.subheader("⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
@@ -570,7 +576,6 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
             plain_password = str(row['password']).strip()
             
             # Cek apakah password tersebut BUKAN hash bcrypt yang valid (panjang < 50 atau tidak dimulai dengan '$')
-            # Jika itu hash bcrypt, biasanya panjangnya > 50 dan dimulai dengan '$'.
             if len(plain_password) < 50 or not plain_password.startswith('$'): 
                 
                 # Pastikan passwordnya tidak kosong atau hanya 'nan' dari CSV
@@ -596,11 +601,43 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
     st.markdown("---")
     
-    # =================================================================
-    # OPSI ADMIN: RESET PASSWORD PENGGUNA
-    # =================================================================
-    st.subheader("🛠️ Opsi Admin: Reset Password Pengguna")
+    
+    # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
+    st.subheader("Opsi Admin: Hapus Akun Pengguna")
+    
+    # Daftar pengguna yang bisa dihapus (kecuali admin)
+    user_list = [name for name in st.session_state.data['name'].tolist() if name.lower() != ADMIN_USER.lower()]
+    user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list, key="delete_user_select")
+    
+    delete_button = st.button("Hapus Akun Pengguna Terpilih", disabled=(user_to_delete_name == ''))
+    
+    if delete_button and user_to_delete_name:
+        try:
+            user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
+            barcode_id_to_delete = user_rows.index.tolist()
+            
+            st.session_state.data.drop(index=barcode_id_to_delete, inplace=True)
+            save_data(st.session_state.data, DATA_FILE)
 
+            st.session_state.log = st.session_state.log[~st.session_state.log['barcode_id'].isin(barcode_id_to_delete)]
+            save_data(st.session_state.log, LOG_FILE)
+            
+            st.success(f"Akun pengguna {user_to_delete_name} (dan {len(barcode_id_to_delete)} data terkait) berhasil dihapus.")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Terjadi masalah saat penghapusan: {e}")
+
+
+# =================================================================
+# MODE BARU: ADMIN RESET PASSWORD
+# =================================================================
+elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.user_role == 'admin':
+    
+    st.header("🛠️ Reset Password Pengguna (Akses Admin)")
+    st.markdown("---")
+
+    # Ambil daftar pengguna untuk reset
     user_list_reset = st.session_state.data['name'].tolist()
     user_to_reset_name = st.selectbox(
         "Pilih Pengguna untuk Reset Password:", 
@@ -661,33 +698,6 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                         st.error(f"Terjadi kesalahan saat mereset password: {e}")
     
     st.markdown("---")
-    
-    # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
-    st.subheader("Opsi Admin: Hapus Akun Pengguna")
-    
-    # Daftar pengguna yang bisa dihapus (kecuali admin)
-    user_list = [name for name in st.session_state.data['name'].tolist() if name.lower() != ADMIN_USER.lower()]
-    user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list, key="delete_user_select")
-    
-    delete_button = st.button("Hapus Akun Pengguna Terpilih", disabled=(user_to_delete_name == ''))
-    
-    if delete_button and user_to_delete_name:
-        try:
-            user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
-            barcode_id_to_delete = user_rows.index.tolist()
-            
-            st.session_state.data.drop(index=barcode_id_to_delete, inplace=True)
-            save_data(st.session_state.data, DATA_FILE)
-
-            st.session_state.log = st.session_state.log[~st.session_state.log['barcode_id'].isin(barcode_id_to_delete)]
-            save_data(st.session_state.log, LOG_FILE)
-            
-            st.success(f"Akun pengguna {user_to_delete_name} (dan {len(barcode_id_to_delete)} data terkait) berhasil dihapus.")
-            st.rerun()
-            
-        except Exception as e:
-            st.error(f"Terjadi masalah saat penghapusan: {e}")
-
 
 # ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN -----------------
 elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_role == 'admin':
