@@ -17,7 +17,7 @@ LOG_FILE = 'parking_log.csv'
 # Memuat kredensial dari st.secrets. Pastikan file .streamlit/secrets.toml ada
 try:
     ADMIN_USER = st.secrets.admin.username
-    ADMIN_PASS = st.secrets.secrets_pass.password 
+    ADMIN_PASS = st.secrets.secrets_pass.password
     
 except:
     # Ini adalah pesan error fatal yang tampil jika secrets.toml salah
@@ -217,18 +217,6 @@ def process_scan(scan_id, feedback_placeholder):
         st.session_state.app_mode = 'gate_monitor'
         return
 
-    else:
-        # Pesan Barcode Tidak Terdaftar
-        set_monitor_message(
-            f"<div style='background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center;'>"\
-            f"<h1 style='margin: 0; font-size: 80px;'>❌ ERROR!</h1>"\
-            f"<p style='font-size: 40px; font-weight: bold;'>BARCODE TIDAK TERDAFTAR</p>"\
-            f"</div>", 'ERROR'
-        )
-        feedback_placeholder.error("❌ Barcode ID tidak terdaftar!")
-        # return True untuk menunjukkan bahwa pesan monitor sudah diatur
-        return True
-
 
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
@@ -243,11 +231,11 @@ if 'app_mode' not in st.session_state:
 if 'logged_in_user_id' not in st.session_state:
     st.session_state.logged_in_user_id = None
 if 'user_role' not in st.session_state:
-    st.session_state.user_role = None    
+    st.session_state.user_role = None  
     
 # --- INISIALISASI MONITOR STATE ---
 if 'monitor_html' not in st.session_state:
-    st.session_state.monitor_html = get_default_monitor_message()    
+    st.session_state.monitor_html = get_default_monitor_message()  
     
 if 'monitor_type' not in st.session_state:    
     st.session_state.monitor_type = 'default'    
@@ -731,53 +719,78 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     selected_name = st.selectbox("Filter berdasarkan Pengguna:", user_names)
 
     if selected_name != 'Semua Pengguna':
-        df_filtered = df_log[df_log['name'] == selected_name].copy()
-        
-        st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
-        display_log = df_filtered[['timestamp', 'event_type']].copy()
-        
-        display_log['Waktu'] = display_log['timestamp'].dt.strftime('%d/%m/%Y %H:%M:%S')
-        display_log.rename(columns={'event_type': 'Tipe Kejadian'}, inplace=True)
-        st.dataframe(display_log[['Waktu', 'Tipe Kejadian']], use_container_width=True)
-        st.markdown("---")
-
+        df_log_filtered = df_log[df_log['name'] == selected_name]
     else:
-        df_filtered = df_log.copy()
-        st.subheader("Grafik Total Kejadian Parkir")
-
-    time_granularity = st.radio(
-        "Pilih Granularitas Grafik:", 
-        ('Harian', 'Mingguan', 'Bulanan', 'Tahunan'),
-        horizontal=True
-    )
+        df_log_filtered = df_log
+        
+    st.markdown("---")
     
-    if time_granularity == 'Harian':
-        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.date
-        date_format = "%d %b"
-    elif time_granularity == 'Mingguan':
-        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('W').dt.start_time.dt.date
-        date_format = "Minggu %W"
-    elif time_granularity == 'Bulanan':
-        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('M').dt.start_time.dt.date
-        date_format = "%b %Y"
-    else: 
-        df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('Y').dt.start_time.dt.date
-        date_format = "%Y"
-
-    chart_data = df_filtered.groupby(['DateGroup', 'event_type']).size().reset_index(name='Jumlah')
+    # GRAFIK 1: Trend Transaksi Harian
+    st.subheader("Grafik 1: Trend Transaksi Masuk/Keluar Harian")
     
-    if chart_data.empty:
-        st.warning("Data log tidak mencukupi untuk membuat grafik berdasarkan filter ini.")
-        st.stop()
+    df_log_daily = df_log_filtered.copy()
+    df_log_daily['date'] = df_log_daily['timestamp'].dt.date
+    
+    df_daily_counts = df_log_daily.groupby(['date', 'event_type']).size().reset_index(name='count')
 
-    chart = alt.Chart(chart_data).mark_bar().encode(
-        x=alt.X('DateGroup', axis=alt.Axis(title=time_granularity, format=date_format)),
-        y=alt.Y('Jumlah', title='Jumlah Transaksi'),
-        color='event_type',
-        tooltip=['DateGroup', 'event_type', 'Jumlah']
-    ).properties(
-        title=f"Total Transaksi Parkir ({time_granularity})"
-    ).interactive() 
+    if not df_daily_counts.empty:
+        chart1 = alt.Chart(df_daily_counts).mark_bar().encode(
+            x=alt.X('date:T', title='Tanggal'),
+            y=alt.Y('count:Q', title='Jumlah Transaksi'),
+            color=alt.Color('event_type:N', title='Tipe Transaksi', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#FF9800'])),
+            tooltip=['date', 'event_type', 'count']
+        ).properties(
+            title='Jumlah Transaksi Masuk dan Keluar per Hari'
+        ).interactive()
+        st.altair_chart(chart1, use_container_width=True)
+    else:
+        st.info("Tidak ada data transaksi harian yang sesuai filter.")
 
-    st.altair_chart(chart, use_container_width=True)
+    st.markdown("---")
 
+    # GRAFIK 2: Distribusi Transaksi per Jam
+    st.subheader("Grafik 2: Distribusi Transaksi per Jam (Tren Jam Sibuk)")
+    
+    df_log_hourly = df_log_filtered.copy()
+    df_log_hourly['hour'] = df_log_hourly['timestamp'].dt.hour
+    
+    df_hourly_counts = df_log_hourly.groupby('hour').size().reset_index(name='count')
+    df_hourly_counts['hour_label'] = df_hourly_counts['hour'].apply(lambda x: f"{x:02d}:00")
+
+    if not df_hourly_counts.empty:
+        chart2 = alt.Chart(df_hourly_counts).mark_line(point=True).encode(
+            x=alt.X('hour_label:N', title='Jam (Waktu Lokal)'),
+            y=alt.Y('count:Q', title='Jumlah Transaksi'),
+            tooltip=['hour_label', 'count']
+        ).properties(
+            title='Total Transaksi Berdasarkan Jam'
+        ).interactive()
+        st.altair_chart(chart2, use_container_width=True)
+    else:
+        st.info("Tidak ada data transaksi per jam yang sesuai filter.")
+    
+    st.markdown("---")
+    
+    # GRAFIK 3: Status Parkir Berdasarkan Jenis Kendaraan
+    st.subheader("Grafik 3: Status Parkir Berdasarkan Jenis Kendaraan (Saat Ini)")
+    
+    df_status = st.session_state.data.copy()
+    df_status_counts = df_status.groupby(['vehicle_type', 'status']).size().reset_index(name='count')
+
+    if not df_status_counts.empty:
+        chart3 = alt.Chart(df_status_counts).mark_bar().encode(
+            x=alt.X('vehicle_type:N', title='Jenis Kendaraan'),
+            y=alt.Y('count:Q', title='Jumlah Kendaraan'),
+            color=alt.Color('status:N', title='Status', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])),
+            column=alt.Column('status:N', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+            tooltip=['vehicle_type', 'status', 'count']
+        ).properties(
+            title='Status Parkir Saat Ini'
+        ).interactive()
+        st.altair_chart(chart3, use_container_width=True)
+    else:
+        st.info("Tidak ada data status parkir.")
+
+    st.markdown("---")
+    st.subheader("Tabel Log Transaksi Terakhir")
+    st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
