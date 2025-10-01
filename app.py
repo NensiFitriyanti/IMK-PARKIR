@@ -854,11 +854,14 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
             tooltip=['vehicle_type', 'status', 'count']
         ).properties(
             title='Status Parkir Saat Ini'
+            width=400,   # atur lebar grafik
+            height=300   # atur tinggi grafik
         ).interactive()
-        st.altair_chart(chart3, use_container_width=True)
+        st.altair_chart(chart3, use_container_width=False)
     else:
         st.info("Tidak ada data status parkir.")
 
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
