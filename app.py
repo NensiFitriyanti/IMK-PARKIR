@@ -10,16 +10,17 @@ import numpy as np
 import time
 import bcrypt
 
-# --- KONFIGURASI APLIKASI (Menggunakan st.secrets) ---
+# --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
 LOG_FILE = 'parking_log.csv'
 
-# Memuat kredensial dari st.secrets
+# Memuat kredensial dari st.secrets. Pastikan file .streamlit/secrets.toml ada
 try:
     ADMIN_USER = st.secrets.admin.username
-    ADMIN_PASS = st.secrets.secrets_pass.password # Menggunakan secrets_pass.password
+    ADMIN_PASS = st.secrets.secrets_pass.password 
+    
 except:
-    # Hentikan aplikasi jika secrets.toml tidak ditemukan/salah.
+    # Ini adalah pesan error fatal yang tampil jika secrets.toml salah
     st.error("""
         FATAL ERROR: Kredensial Admin tidak ditemukan.
         Pastikan Anda memiliki file `.streamlit/secrets.toml` yang berisi:
@@ -31,7 +32,7 @@ except:
     """)
     st.stop()
     
-MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor
+MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor (5 detik)
 
 REQUIRED_USER_COLUMNS = ['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status', 'time_in', 'time_out', 'duration']
 REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_type']
@@ -50,12 +51,10 @@ def get_default_monitor_message():
 
 # --- FUNGSI PEMBANTU (UTILITIES) ---
 
-# Fungsi untuk Hashing Password BARU
 def hash_password(password):
     """Menghasilkan hash dari password menggunakan bcrypt."""
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-# Fungsi untuk Cek Password BARU
 def check_password(plain_password, hashed_password):
     """Memverifikasi password yang dimasukkan dengan hash yang tersimpan."""
     try:
@@ -207,13 +206,11 @@ def process_scan(scan_id, feedback_placeholder):
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
-# Muat data utama dan log
 if 'data' not in st.session_state:
     st.session_state.data = load_data(DATA_FILE, REQUIRED_USER_COLUMNS)
 if 'log' not in st.session_state:
     st.session_state.log = load_data(LOG_FILE, REQUIRED_LOG_COLUMNS)
 
-# Mengatur status aplikasi (Mode)
 if 'app_mode' not in st.session_state:
     st.session_state.app_mode = 'login'
 if 'logged_in_user_id' not in st.session_state:
@@ -221,7 +218,7 @@ if 'logged_in_user_id' not in st.session_state:
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None    
     
-# --- INISIALISASI MONITOR STATE (Perbaikan Timer) ---
+# --- INISIALISASI MONITOR STATE ---
 if 'monitor_html' not in st.session_state:
     st.session_state.monitor_html = get_default_monitor_message()    
     
@@ -229,14 +226,11 @@ if 'monitor_type' not in st.session_state:
     st.session_state.monitor_type = 'default'    
 
 if 'monitor_display_time' not in st.session_state:
-    # Set waktu lampau agar langsung tampil default
     st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
     
-# --- INISIALISASI FILTER TABLE ADMIN ---
 if 'admin_table_filter' not in st.session_state:
-    st.session_state.admin_table_filter = 'ALL' # Default: ALL (Semua)
-# -------------------------------------------
-
+    st.session_state.admin_table_filter = 'ALL' 
+    
 # Tombol Logout dan Menu Admin/Monitor
 st.sidebar.title("Menu Aplikasi")
 
@@ -253,11 +247,9 @@ elif st.session_state.app_mode not in ['login', 'register']:
         if st.sidebar.button("Analitik & Grafik"):
             st.session_state.app_mode = 'admin_analytics'
             st.rerun()
-        # --- MENU BARU: RESET PASSWORD ---
         if st.sidebar.button("Reset Password Pengguna"):
             st.session_state.app_mode = 'admin_reset_password'
             st.rerun()
-        # ---------------------------------
         st.sidebar.markdown("---")
         if st.sidebar.button("Buka Monitor Gerbang"):
              st.session_state.app_mode = 'gate_monitor'
@@ -278,21 +270,24 @@ if st.session_state.app_mode != 'gate_monitor':
 # FUNGSI APLIKASI BERDASARKAN MODE
 # =================================================================
 
-# ----------------- MODE MONITOR GERBANG -----------------
+# ----------------- MODE MONITOR GERBANG (Logika Timer Stabil) -----------------
 if st.session_state.app_mode == 'gate_monitor':
     
-    # Logika Timer Reset Pesan
+    # Hitung waktu yang berlalu sejak pesan terakhir ditampilkan
     time_elapsed = datetime.now() - st.session_state.monitor_display_time
     
-    # --- PERBAIKAN LOGIKA TIMER DI SINI ---
-    # Cek apakah waktu sudah melewati batas timeout
+    # Cek apakah waktu sudah melewati batas timeout (5 detik)
     if st.session_state.monitor_type != 'default' and time_elapsed.total_seconds() >= MONITOR_TIMEOUT_SECONDS:
-        # Jika timeout dan pesan bukan default, reset ke default
+        
+        # 1. Reset pesan ke default
         st.session_state.monitor_html = get_default_monitor_message()
         st.session_state.monitor_type = 'default'
-        # Reset display time ke waktu lampau agar langsung tampil default jika monitor dibuka lagi
+        
+        # 2. Reset display time ke waktu lampau agar tidak terjadi loop reset
         st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
-        st.rerun() # GANTI: st.experimental_rerun() -> st.rerun()
+        
+        # 3. PENTING: Paksa RERUN untuk menampilkan pesan default
+        st.rerun() 
         
     # Tampilkan pesan monitor
     st.markdown(
@@ -302,15 +297,21 @@ if st.session_state.app_mode == 'gate_monitor':
     
     # Logika RERUN Otomatis untuk menghitung mundur
     if st.session_state.monitor_type != 'default' and time_elapsed.total_seconds() < MONITOR_TIMEOUT_SECONDS:
-        # Tampilkan hitungan mundur (opsional, untuk memastikan timer bekerja)
-        time_left = MONITOR_TIMEOUT_SECONDS - int(time_elapsed.total_seconds())
-        st.empty().markdown(f"<div style='text-align: right; color: gray;'>⏳ Kembali dalam {time_left} detik...</div>", unsafe_allow_html=True)
         
-        time.sleep(1) # Tunggu 1 detik
-        st.rerun() # GANTI: st.experimental_rerun() -> st.rerun()
-    # ------------------------------------------
+        # Tampilkan hitungan mundur 
+        time_left = MONITOR_TIMEOUT_SECONDS - int(time_elapsed.total_seconds())
+        st.empty().markdown(
+            f"<div style='text-align: right; color: gray;'>⏳ Kembali dalam {time_left} detik...</div>", 
+            unsafe_allow_html=True
+        )
+        
+        # Tunggu 1 detik
+        time.sleep(1) 
+        
+        # PENTING: Paksa Streamlit untuk menjalankan ulang skrip agar cek waktu berikutnya
+        st.rerun() 
     
-    st.stop() # Hentikan eksekusi di sini agar hanya monitor yang tampil
+    st.stop() 
 
 # ----------------- MODE LOGIN / REGISTER / USER DASHBOARD -----------------
 elif st.session_state.app_mode == 'login':
@@ -327,7 +328,7 @@ elif st.session_state.app_mode == 'login':
             
             if login_button:
                 
-                # 1. Cek login Admin (Menggunakan st.secrets)
+                # 1. Cek login Admin
                 if login_name_or_admin == ADMIN_USER and login_pass == ADMIN_PASS:
                     st.session_state.app_mode = 'admin_dashboard'
                     st.session_state.user_role = 'admin'
@@ -345,7 +346,6 @@ elif st.session_state.app_mode == 'login':
 
                         stored_password_clean = str(first_match['password']).strip()
                         
-                        # Cek password menggunakan bcrypt
                         if stored_password_clean and check_password(login_pass, stored_password_clean):
                             st.session_state.app_mode = 'user_dashboard'
                             st.session_state.user_role = 'user'
@@ -387,7 +387,6 @@ elif st.session_state.app_mode == 'register':
                 else:
                     new_barcode_id = str(uuid.uuid4())
                     
-                    # Hash password sebelum disimpan
                     hashed_password = hash_password(password)
                     
                     new_data = {
@@ -469,23 +468,19 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     with col_input:
         st.subheader("Kontrol Scanner Gerbang")
         
-        # Placeholder untuk feedback
         feedback_placeholder = st.empty()
         
         tab_text, tab_file, tab_camera = st.tabs(["Input Teks ID", "Unggah Barcode Gambar", "Ambil Foto Barcode (Kamera)"])
 
-        # Input 1: Teks
         with tab_text:
             scan_id_text = st.text_input("Masukkan Barcode ID Manual:", key="admin_scan_id_text").strip()
             if st.button("PROSES DENGAN TEKS"):
                 process_scan(scan_id_text, feedback_placeholder)
                 
-                # Paksa pindah ke monitor
                 st.session_state.app_mode = 'gate_monitor' 
                 st.rerun() 
                 
 
-        # Input 2: Unggah File
         with tab_file:
             uploaded_file = st.file_uploader("Unggah Gambar Barcode/QR Code (.png, .jpg)", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
@@ -494,12 +489,10 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                 if st.button("PROSES DENGAN GAMBAR"):
                     process_scan(simulated_id, feedback_placeholder)
                     
-                    # Paksa pindah ke monitor
                     st.session_state.app_mode = 'gate_monitor' 
                     st.rerun()
                     
 
-        # Input 3: Ambil Foto (Kamera)
         with tab_camera:
             camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
             if camera_image is not None:
@@ -509,7 +502,6 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                 if st.button("PROSES DENGAN FOTO"):
                     process_scan(simulated_id_cam, feedback_placeholder)
                     
-                    # Paksa pindah ke monitor
                     st.session_state.app_mode = 'gate_monitor' 
                     st.rerun()
 
@@ -533,26 +525,20 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     # Tabel Status Parkir & Hapus Akun
     st.subheader("Tabel Status Parkir Saat Ini")
     
-    # Filter tabel
-    col_filter_all, col_filter_in, col_filter_out, col_spacer = st.columns([1, 1, 1, 5])
-    
-    # Fungsi untuk mengubah filter
     def set_filter(status):
         st.session_state.admin_table_filter = status
     
+    col_filter_all, col_filter_in, col_filter_out, col_spacer = st.columns([1, 1, 1, 5])
     with col_filter_all:
-        if st.button("🌎 Semua", key="filter_all", help="Tampilkan semua pengguna (Masuk dan Keluar)"):
+        if st.button("🌎 Semua", key="filter_all"):
             set_filter('ALL')
-    
     with col_filter_in:
-        if st.button("🚗 Masuk", key="filter_in", help="Hanya tampilkan pengguna yang sedang parkir (Status: IN)"):
+        if st.button("🚗 Masuk", key="filter_in"):
             set_filter('IN')
-            
     with col_filter_out:
-        if st.button("🚪 Keluar", key="filter_out", help="Hanya tampilkan pengguna yang sudah keluar (Status: OUT)"):
+        if st.button("🚪 Keluar", key="filter_out"):
             set_filter('OUT')
     
-    # Terapkan Filter
     df_filtered_table = st.session_state.data.copy()
     if st.session_state.admin_table_filter == 'IN':
         df_filtered_table = df_filtered_table[df_filtered_table['status'] == 'IN']
@@ -563,10 +549,8 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     else:
         st.info("Filter Aktif: Menampilkan **Semua** data pengguna.")
         
-    # Buat copy data untuk ditampilkan
     display_data = df_filtered_table[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
-    # Format kolom waktu
     display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
     display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
 
@@ -586,7 +570,6 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
     st.subheader("Opsi Admin: Hapus Akun Pengguna")
     
-    # Daftar pengguna yang bisa dihapus (kecuali admin)
     user_list = [name for name in st.session_state.data['name'].tolist() if name.lower() != ADMIN_USER.lower()]
     user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list, key="delete_user_select")
     
@@ -610,22 +593,18 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
             st.error(f"Terjadi masalah saat penghapusan: {e}")
 
 
-# =================================================================
-# MODE BARU: ADMIN RESET PASSWORD 
-# =================================================================
+# ----------------- ADMIN RESET PASSWORD -----------------
 elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.user_role == 'admin':
     
     st.header("🛠️ Reset Password & Migrasi Data Pengguna (Akses Admin)")
     st.markdown("---")
 
-    # --- BAGIAN 1: RESET PASSWORD PENGGUNA INDIVIDUAL ---
     st.subheader("1. Reset Password Pengguna Individual")
     
-    # Ambil daftar pengguna untuk reset
     user_list_reset = st.session_state.data['name'].tolist()
     user_to_reset_name = st.selectbox(
         "Pilih Pengguna untuk Reset Password:", 
-        [''] + sorted([name for name in user_list_reset if name.lower() != ADMIN_USER.lower()]), # Kecualikan Admin
+        [''] + sorted([name for name in user_list_reset if name.lower() != ADMIN_USER.lower()]), 
         key="reset_user_select"
     )
 
@@ -654,27 +633,22 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
                     st.error("Password baru dan konfirmasi tidak cocok!")
                 else:
                     try:
-                        # Temukan data pengguna berdasarkan nama yang dipilih
                         user_rows_to_update = st.session_state.data[
                             st.session_state.data['name'] == user_to_reset_name
                         ]
                         
                         if not user_rows_to_update.empty:
-                            # Dapatkan ID barcode (index) dari baris yang ditemukan
                             barcode_id_to_update = user_rows_to_update.index[0]
                             
-                            # HASH password baru
                             hashed_password_new = hash_password(new_pass_admin)
                             
-                            # Update data di session state dan DataFrame
                             st.session_state.data.loc[barcode_id_to_update, 'password'] = hashed_password_new
                             
-                            # Simpan ke file CSV
                             save_data(st.session_state.data, DATA_FILE)
                             
                             st.success(f"✅ Password untuk **{user_to_reset_name}** berhasil direset!")
                             st.warning("Penting: Berikan password baru ini kepada pengguna dan sarankan mereka untuk login dan menggantinya.")
-                            st.rerun() # Refresh tampilan
+                            st.rerun() 
                         else:
                             st.error("Pengguna tidak ditemukan dalam database.")
 
@@ -683,9 +657,6 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
     
     st.markdown("---")
     
-    # =================================================================
-    # BAGIAN 2: OPSI ADMIN: MIGRASI PASSWORD LAMA 
-    # =================================================================
     st.subheader("2. ⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
     st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
 
@@ -696,7 +667,6 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
         for index, row in df.iterrows():
             plain_password = str(row['password']).strip()
             
-            # Cek jika password belum di-hash (panjang string hash bcrypt > 50 dan dimulai dengan '$')
             if len(plain_password) < 50 or not plain_password.startswith('$'): 
                 
                 if plain_password and plain_password.lower() != 'nan':
@@ -729,14 +699,12 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     df_log['timestamp'] = pd.to_datetime(df_log['timestamp'], errors='coerce')
     df_log.dropna(subset=['timestamp'], inplace=True)
     
-    # --- Filter Berdasarkan Pengguna ---
     user_names = ['Semua Pengguna'] + sorted(df_log['name'].unique().tolist())
     selected_name = st.selectbox("Filter berdasarkan Pengguna:", user_names)
 
     if selected_name != 'Semua Pengguna':
         df_filtered = df_log[df_log['name'] == selected_name].copy()
         
-        # Tampilkan Log Spesifik
         st.subheader(f"Log Keluar Masuk Portal Parkir ({selected_name})")
         display_log = df_filtered[['timestamp', 'event_type']].copy()
         
@@ -749,14 +717,12 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
         df_filtered = df_log.copy()
         st.subheader("Grafik Total Kejadian Parkir")
 
-    # --- Filter Grafik Harian/Mingguan/Bulanan/Tahunan ---
     time_granularity = st.radio(
         "Pilih Granularitas Grafik:", 
         ('Harian', 'Mingguan', 'Bulanan', 'Tahunan'),
         horizontal=True
     )
     
-    # Menentukan Agregasi
     if time_granularity == 'Harian':
         df_filtered['DateGroup'] = df_filtered['timestamp'].dt.date
         date_format = "%d %b"
@@ -766,18 +732,16 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     elif time_granularity == 'Bulanan':
         df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('M').dt.start_time.dt.date
         date_format = "%b %Y"
-    else: # Tahunan
+    else: 
         df_filtered['DateGroup'] = df_filtered['timestamp'].dt.to_period('Y').dt.start_time.dt.date
         date_format = "%Y"
 
-    # Agregasi Data untuk Grafik
     chart_data = df_filtered.groupby(['DateGroup', 'event_type']).size().reset_index(name='Jumlah')
     
     if chart_data.empty:
         st.warning("Data log tidak mencukupi untuk membuat grafik berdasarkan filter ini.")
         st.stop()
 
-    # Membuat Grafik Altair
     chart = alt.Chart(chart_data).mark_bar().encode(
         x=alt.X('DateGroup', axis=alt.Axis(title=time_granularity, format=date_format)),
         y=alt.Y('Jumlah', title='Jumlah Transaksi'),
