@@ -71,7 +71,7 @@ def set_background(image_path):
             }}
             /* 1. Sidebar Transparan (Opacity 80%) */
             [data-testid="stSidebar"] {{
-                background-color: rgba(255, 255, 255, 0.8); 
+                background-color: rgba(0, 0, 0, 0.8); 
                 border-right: 1px solid #ccc;
             }}
 
@@ -862,4 +862,5 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
