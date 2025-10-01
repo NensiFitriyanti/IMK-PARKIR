@@ -346,7 +346,7 @@ elif st.session_state.app_mode not in ['login', 'register']:
         st.rerun()    
 
 if st.session_state.app_mode != 'gate_monitor':
-    st.title("🅿️ Aplikasi Dashboard Parkir Barcode")
+    st.title("🅿️ Dashboard Parkir")
     st.markdown("---")
 
 # =================================================================
@@ -862,4 +862,5 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
