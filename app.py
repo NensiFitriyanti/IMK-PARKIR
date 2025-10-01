@@ -880,8 +880,8 @@ if not df_status_counts.empty:
         tooltip=['vehicle_type', 'status', 'count']
     ).properties(
         title='Status Parkir Saat Ini',
-        width=20,   # atur lebar chart per kolom
-        height=50   # atur tinggi chart
+        width=30,   # atur lebar chart per kolom
+        height=10   # atur tinggi chart
     ).interactive()
     st.altair_chart(chart3, use_container_width=True)
 else:
@@ -893,6 +893,7 @@ st.dataframe(
     df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False),
     use_container_width=True
 )
+
 
 
 
