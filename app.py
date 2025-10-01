@@ -83,7 +83,7 @@ def load_data(file_name, required_cols):
         
         for col in ['user_id', 'name', 'password']:
             if col in df.columns:
-                 df[col] = df[col].astype(str).fillna('')
+                df[col] = df[col].astype(str).fillna('')
             
         for col in ['timestamp', 'time_in', 'time_out']:
             if col in df.columns:
@@ -96,7 +96,7 @@ def load_data(file_name, required_cols):
     else:
         df = pd.DataFrame(columns=required_cols)
         if 'barcode_id' in required_cols:
-             df.set_index('barcode_id', drop=False, inplace=True)
+            df.set_index('barcode_id', drop=False, inplace=True)
     
     return df
 
@@ -165,8 +165,8 @@ def process_scan(scan_id, feedback_placeholder):
             # Aksi MASUK
             st.session_state.data.loc[scan_id, 'status'] = 'IN'
             st.session_state.data.loc[scan_id, 'time_in'] = current_time 
-            st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT       
-            st.session_state.data.loc[scan_id, 'duration'] = ''           
+            st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      
+            st.session_state.data.loc[scan_id, 'duration'] = ''          
             save_data(st.session_state.data, DATA_FILE)
             add_to_log(scan_id, name, 'IN', current_time)
 
@@ -284,7 +284,7 @@ if st.session_state.app_mode != 'gate_monitor':
 
 # ----------------- MODE MONITOR GERBANG -----------------
 if st.session_state.app_mode == 'gate_monitor':
-# ... (Logika Monitor Gerbang tidak diubah)
+# ... (Logika Monitor Gerbang)
     
     # Logika Timer Reset Pesan
     time_elapsed = datetime.now() - st.session_state.monitor_display_time
@@ -344,7 +344,6 @@ elif st.session_state.app_mode == 'login':
                         stored_password_clean = str(first_match['password']).strip()
                         
                         # --- PERUBAHAN UTAMA DI SINI: Cek password menggunakan bcrypt ---
-                        # Pastikan password yang disimpan tidak kosong dan bukan NaN sebelum cek
                         # Jika stored_password bukan hasil hash, check_password akan mengembalikan False.
                         if stored_password_clean and check_password(login_pass, stored_password_clean):
                         # ----------------------------------------------------------------------
@@ -366,6 +365,7 @@ elif st.session_state.app_mode == 'login':
 
 
 elif st.session_state.app_mode == 'register':
+# ... (Logika Register)
     st.subheader("Buat Akun Parkir Baru")
     
     if st.button("<< Kembali ke Login"):
@@ -416,7 +416,7 @@ elif st.session_state.app_mode == 'register':
 
 
 elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_role == 'user':
-# ... (Logika User Dashboard tidak diubah)
+# ... (Logika User Dashboard)
     user_id = st.session_state.logged_in_user_id
     if user_id not in st.session_state.data.index:
         st.error("Data pengguna tidak ditemukan. Silakan login ulang.")
@@ -466,7 +466,7 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
 
 # ----------------- DASHBOARD ADMIN/PETUGAS -----------------
 elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_role == 'admin':
-# ... (Logika Dashboard Admin tidak diubah)
+# ... (Logika Dashboard Admin)
     st.header("Dashboard Petugas Parkir (Akses Admin)")
     
     col_input, col_stats = st.columns([6, 2])
@@ -554,12 +554,120 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         use_container_width=True
     )
     
-    # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
+    # =================================================================
+    # OPSI ADMIN: MIGRASI PASSWORD LAMA (SOLUSI PENGGUNA TIDAK BISA LOGIN)
+    # =================================================================
     st.markdown("---")
+    st.subheader("⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
+    st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
+
+    if st.button("Konversi Semua Password Lama ke Format Bcrypt"):
+        df = st.session_state.data.copy()
+        passwords_migrated = 0
+        
+        # Iterasi melalui setiap baris data
+        for index, row in df.iterrows():
+            plain_password = str(row['password']).strip()
+            
+            # Cek apakah password tersebut BUKAN hash bcrypt yang valid (panjang < 50 atau tidak dimulai dengan '$')
+            # Jika itu hash bcrypt, biasanya panjangnya > 50 dan dimulai dengan '$'.
+            if len(plain_password) < 50 or not plain_password.startswith('$'): 
+                
+                # Pastikan passwordnya tidak kosong atau hanya 'nan' dari CSV
+                if plain_password and plain_password.lower() != 'nan':
+                    try:
+                        # Hash password lama
+                        hashed = hash_password(plain_password)
+                        # Update DataFrame
+                        df.loc[index, 'password'] = hashed
+                        passwords_migrated += 1
+                    except Exception as e:
+                        st.warning(f"Gagal meng-hash password untuk pengguna {row['name']}: {e}")
+        
+        if passwords_migrated > 0:
+            # Simpan DataFrame yang sudah diperbarui
+            st.session_state.data = df
+            save_data(st.session_state.data, DATA_FILE)
+            st.success(f"✅ Migrasi berhasil! **{passwords_migrated}** password lama telah di-hash dengan bcrypt.")
+            st.balloons()
+            st.rerun()
+        else:
+            st.info("Semua password sudah dalam format bcrypt atau kosong. Tidak ada yang perlu dimigrasi.")
+
+    st.markdown("---")
+    
+    # =================================================================
+    # OPSI ADMIN: RESET PASSWORD PENGGUNA
+    # =================================================================
+    st.subheader("🛠️ Opsi Admin: Reset Password Pengguna")
+
+    user_list_reset = st.session_state.data['name'].tolist()
+    user_to_reset_name = st.selectbox(
+        "Pilih Pengguna untuk Reset Password:", 
+        [''] + sorted([name for name in user_list_reset if name.lower() != ADMIN_USER.lower()]), # Kecualikan Admin
+        key="reset_user_select"
+    )
+
+    if user_to_reset_name:
+        with st.form("reset_password_form", clear_on_submit=True):
+            st.info(f"Anda akan mereset password untuk **{user_to_reset_name}**.")
+            
+            new_pass_admin = st.text_input(
+                "Masukkan Password BARU", 
+                type="password", 
+                key="new_pass_admin_input"
+            ).strip()
+            
+            confirm_pass_admin = st.text_input(
+                "Konfirmasi Password BARU", 
+                type="password", 
+                key="confirm_pass_admin_input"
+            ).strip()
+            
+            reset_button = st.form_submit_button("Lakukan Reset Password")
+
+            if reset_button:
+                if not new_pass_admin or not confirm_pass_admin:
+                    st.error("Semua kolom password harus diisi.")
+                elif new_pass_admin != confirm_pass_admin:
+                    st.error("Password baru dan konfirmasi tidak cocok!")
+                else:
+                    try:
+                        # Temukan data pengguna berdasarkan nama yang dipilih
+                        user_rows_to_update = st.session_state.data[
+                            st.session_state.data['name'] == user_to_reset_name
+                        ]
+                        
+                        if not user_rows_to_update.empty:
+                            # Dapatkan ID barcode (index) dari baris yang ditemukan (asumsi nama unik, ambil baris pertama)
+                            barcode_id_to_update = user_rows_to_update.index[0]
+                            
+                            # HASH password baru
+                            hashed_password_new = hash_password(new_pass_admin)
+                            
+                            # Update data di session state dan DataFrame
+                            st.session_state.data.loc[barcode_id_to_update, 'password'] = hashed_password_new
+                            
+                            # Simpan ke file CSV
+                            save_data(st.session_state.data, DATA_FILE)
+                            
+                            st.success(f"✅ Password untuk **{user_to_reset_name}** berhasil direset!")
+                            st.warning("Penting: Berikan password baru ini kepada pengguna dan sarankan mereka untuk login dan menggantinya.")
+                            st.rerun() # Refresh tampilan
+                        else:
+                            st.error("Pengguna tidak ditemukan dalam database.")
+
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan saat mereset password: {e}")
+    
+    st.markdown("---")
+    
+    # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
     st.subheader("Opsi Admin: Hapus Akun Pengguna")
     
-    user_list = st.session_state.data['name'].tolist()
-    user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list)
+    # Daftar pengguna yang bisa dihapus (kecuali admin)
+    user_list = [name for name in st.session_state.data['name'].tolist() if name.lower() != ADMIN_USER.lower()]
+    user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list, key="delete_user_select")
     
     delete_button = st.button("Hapus Akun Pengguna Terpilih", disabled=(user_to_delete_name == ''))
     
@@ -583,7 +691,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
 # ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN -----------------
 elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_role == 'admin':
-# ... (Logika Analitik dan Grafik tidak diubah)
+# ... (Logika Analitik dan Grafik)
     st.header("Analitik Parkir: Log & Grafik")
     
     if st.session_state.log.empty:
@@ -655,4 +763,3 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
-
