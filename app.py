@@ -561,43 +561,15 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     )
     
     # =================================================================
-    # OPSI ADMIN: MIGRASI PASSWORD LAMA (TETAP DI SINI KARENA PENTING & SEKALI JALAN)
+    # OPSI ADMIN: MIGRASI PASSWORD LAMA (Telah dipindahkan)
     # =================================================================
-    st.markdown("---")
-    st.subheader("⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
-    st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
-
-    if st.button("Konversi Semua Password Lama ke Format Bcrypt"):
-        df = st.session_state.data.copy()
-        passwords_migrated = 0
-        
-        # Iterasi melalui setiap baris data
-        for index, row in df.iterrows():
-            plain_password = str(row['password']).strip()
-            
-            # Cek apakah password tersebut BUKAN hash bcrypt yang valid (panjang < 50 atau tidak dimulai dengan '$')
-            if len(plain_password) < 50 or not plain_password.startswith('$'): 
-                
-                # Pastikan passwordnya tidak kosong atau hanya 'nan' dari CSV
-                if plain_password and plain_password.lower() != 'nan':
-                    try:
-                        # Hash password lama
-                        hashed = hash_password(plain_password)
-                        # Update DataFrame
-                        df.loc[index, 'password'] = hashed
-                        passwords_migrated += 1
-                    except Exception as e:
-                        st.warning(f"Gagal meng-hash password untuk pengguna {row['name']}: {e}")
-        
-        if passwords_migrated > 0:
-            # Simpan DataFrame yang sudah diperbarui
-            st.session_state.data = df
-            save_data(st.session_state.data, DATA_FILE)
-            st.success(f"✅ Migrasi berhasil! **{passwords_migrated}** password lama telah di-hash dengan bcrypt.")
-            st.balloons()
-            st.rerun()
-        else:
-            st.info("Semua password sudah dalam format bcrypt atau kosong. Tidak ada yang perlu dimigrasi.")
+    # Hapus bagian ini
+    # st.markdown("---")
+    # st.subheader("⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
+    # st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
+    # if st.button("Konversi Semua Password Lama ke Format Bcrypt"):
+    #     ... (Logika migrasi lama)
+    # -----------------------------------------------------------------
 
     st.markdown("---")
     
@@ -630,13 +602,16 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
 
 # =================================================================
-# MODE BARU: ADMIN RESET PASSWORD
+# MODE BARU: ADMIN RESET PASSWORD (DITAMBAH MIGRASI DI SINI)
 # =================================================================
 elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.user_role == 'admin':
     
-    st.header("🛠️ Reset Password Pengguna (Akses Admin)")
+    st.header("🛠️ Reset Password & Migrasi Data Pengguna (Akses Admin)")
     st.markdown("---")
 
+    # --- BAGIAN 1: RESET PASSWORD PENGGUNA INDIVIDUAL ---
+    st.subheader("1. Reset Password Pengguna Individual")
+    
     # Ambil daftar pengguna untuk reset
     user_list_reset = st.session_state.data['name'].tolist()
     user_to_reset_name = st.selectbox(
@@ -676,7 +651,7 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
                         ]
                         
                         if not user_rows_to_update.empty:
-                            # Dapatkan ID barcode (index) dari baris yang ditemukan (asumsi nama unik, ambil baris pertama)
+                            # Dapatkan ID barcode (index) dari baris yang ditemukan
                             barcode_id_to_update = user_rows_to_update.index[0]
                             
                             # HASH password baru
@@ -697,6 +672,46 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
                     except Exception as e:
                         st.error(f"Terjadi kesalahan saat mereset password: {e}")
     
+    st.markdown("---")
+    
+    # =================================================================
+    # BAGIAN 2: OPSI ADMIN: MIGRASI PASSWORD LAMA (PINDAHAN DARI ADMIN DASHBOARD)
+    # =================================================================
+    st.subheader("2. ⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
+    st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
+
+    if st.button("Konversi Semua Password Lama ke Format Bcrypt"):
+        df = st.session_state.data.copy()
+        passwords_migrated = 0
+        
+        # Iterasi melalui setiap baris data
+        for index, row in df.iterrows():
+            plain_password = str(row['password']).strip()
+            
+            # Cek apakah password tersebut BUKAN hash bcrypt yang valid
+            if len(plain_password) < 50 or not plain_password.startswith('$'): 
+                
+                # Pastikan passwordnya tidak kosong
+                if plain_password and plain_password.lower() != 'nan':
+                    try:
+                        # Hash password lama
+                        hashed = hash_password(plain_password)
+                        # Update DataFrame
+                        df.loc[index, 'password'] = hashed
+                        passwords_migrated += 1
+                    except Exception as e:
+                        st.warning(f"Gagal meng-hash password untuk pengguna {row['name']}: {e}")
+        
+        if passwords_migrated > 0:
+            # Simpan DataFrame yang sudah diperbarui
+            st.session_state.data = df
+            save_data(st.session_state.data, DATA_FILE)
+            st.success(f"✅ Migrasi berhasil! **{passwords_migrated}** password lama telah di-hash dengan bcrypt.")
+            st.balloons()
+            st.rerun()
+        else:
+            st.info("Semua password sudah dalam format bcrypt atau kosong. Tidak ada yang perlu dimigrasi.")
+
     st.markdown("---")
 
 # ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN -----------------
