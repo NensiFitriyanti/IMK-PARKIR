@@ -41,7 +41,7 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 # -----------------------------------------------------------------------------
 # >>> PENAMBAHAN KODE UNTUK LATAR BELAKANG DIMULAI DI SINI <<<
 # -----------------------------------------------------------------------------
-def set_background(image_url):
+def set_background(BG-FASIKOM.jpeg):
     """Menyuntikkan CSS untuk mengatur gambar latar belakang."""
     
     # Keterangan Penting: Pastikan file BG-FASILKOM.jpeg ada di direktori yang sama!
@@ -836,3 +836,4 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
