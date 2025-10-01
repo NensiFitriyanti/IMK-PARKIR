@@ -6,7 +6,7 @@ from io import BytesIO
 import os
 from datetime import datetime, timedelta
 import altair as alt
-import numpy as np
+import numpy as np 
 import time
 
 # --- KONFIGURASI APLIKASI (Menggunakan st.secrets) ---
@@ -14,11 +14,13 @@ DATA_FILE = 'parking_users.csv'
 LOG_FILE = 'parking_log.csv' 
 
 # Memuat kredensial dari st.secrets
+# Ini adalah perubahan utama. Dihapus baris hardcode dan diganti dengan st.secrets
 try:
     ADMIN_USER = st.secrets.admin.username
     ADMIN_PASS = st.secrets.admin.password
 except:
-    # Fallback jika secrets.toml tidak ditemukan/salah. Gunakan ini HANYA untuk development.
+    # Fallback jika secrets.toml tidak ditemukan/salah
+    # Ganti ini dengan kredensial default yang aman jika Anda tidak menggunakan secrets
     ADMIN_USER = "petugas"
     ADMIN_PASS = "admin123"
     
@@ -94,7 +96,7 @@ def add_to_log(barcode_id, name, event_type, timestamp):
         'timestamp': timestamp,
         'event_type': event_type
     }
-    # Perbaikan: Menggunakan pd.concat atau .loc (sesuai kode sebelumnya)
+    # Menggunakan pd.concat untuk menambah baris
     new_log_df = pd.DataFrame([new_log], columns=st.session_state.log.columns)
     st.session_state.log = pd.concat([st.session_state.log, new_log_df], ignore_index=True)
     save_data(st.session_state.log, LOG_FILE)
@@ -371,7 +373,6 @@ elif st.session_state.app_mode == 'register':
 
 elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_role == 'user':
     user_id = st.session_state.logged_in_user_id
-    # Pastikan user_id ada sebelum mengakses
     if user_id not in st.session_state.data.index:
         st.error("Data pengguna tidak ditemukan. Silakan login ulang.")
         st.session_state.app_mode = 'login'
@@ -438,7 +439,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
             if st.button("PROSES DENGAN TEKS"):
                 process_scan(scan_id_text, feedback_placeholder)
                 
-                # --- PERBAIKAN: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
+                # --- PENTING: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
                 st.session_state.app_mode = 'gate_monitor' 
                 st.rerun() 
                 # -----------------------------------------------------------------
@@ -452,7 +453,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                 if st.button("PROSES DENGAN GAMBAR"):
                     process_scan(simulated_id, feedback_placeholder)
                     
-                    # --- PERBAIKAN: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
+                    # --- PENTING: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
                     st.session_state.app_mode = 'gate_monitor' 
                     st.rerun()
                     # -----------------------------------------------------------------
@@ -467,7 +468,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
                 if st.button("PROSES DENGAN FOTO"):
                     process_scan(simulated_id_cam, feedback_placeholder)
                     
-                    # --- PERBAIKAN: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
+                    # --- PENTING: PAKSA PINDAH KE MODE MONITOR & RERUN INSTAN ---
                     st.session_state.app_mode = 'gate_monitor' 
                     st.rerun()
                     # -----------------------------------------------------------------
