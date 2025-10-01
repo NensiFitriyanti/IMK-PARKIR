@@ -20,7 +20,7 @@ LOG_FILE = 'parking_log.csv'
 # Memuat kredensial dari st.secrets
 try:
     ADMIN_USER = st.secrets.admin.username
-    ADMIN_PASS = st.secrets.secrets.admin.password # Perbaikan: st.secrets.admin.password
+    ADMIN_PASS = st.secrets.admin.password  # Perbaikan: st.secrets.admin.password
     
 except:
     # Hentikan aplikasi jika secrets.toml tidak ditemukan/salah.
@@ -655,3 +655,4 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
+
