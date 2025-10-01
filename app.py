@@ -11,16 +11,14 @@ import time
 
 # --- KONFIGURASI APLIKASI (Menggunakan st.secrets) ---
 DATA_FILE = 'parking_users.csv'
-LOG_FILE = 'parking_log.csv' 
+LOG_FILE = 'parking_log.csv'
 
 # Memuat kredensial dari st.secrets
-# Ini adalah perubahan utama. Dihapus baris hardcode dan diganti dengan st.secrets
 try:
     ADMIN_USER = st.secrets.admin.username
     ADMIN_PASS = st.secrets.admin.password
 except:
     # Fallback jika secrets.toml tidak ditemukan/salah
-    # Ganti ini dengan kredensial default yang aman jika Anda tidak menggunakan secrets
     ADMIN_USER = "petugas"
     ADMIN_PASS = "admin123"
     
