@@ -9,6 +9,10 @@ import altair as alt
 import numpy as np 
 import time
 
+# --- TAMBAHKAN IMPORT BCYPT ---
+import bcrypt 
+# ------------------------------
+
 # --- KONFIGURASI APLIKASI (Menggunakan st.secrets) ---
 DATA_FILE = 'parking_users.csv'
 LOG_FILE = 'parking_log.csv'
@@ -16,7 +20,7 @@ LOG_FILE = 'parking_log.csv'
 # Memuat kredensial dari st.secrets
 try:
     ADMIN_USER = st.secrets.admin.username
-    ADMIN_PASS = st.secrets.admin.password
+    ADMIN_PASS = st.secrets.secrets.admin.password # Perbaikan: st.secrets.admin.password
     
 except:
     # Hentikan aplikasi jika secrets.toml tidak ditemukan/salah.
@@ -25,6 +29,8 @@ except:
         FATAL ERROR: Kredensial Admin tidak ditemukan.
         Pastikan Anda memiliki file `.streamlit/secrets.toml` yang berisi:
         [admin]
+        username = "..."
+        password = "..."
         (atau kredensial Anda yang sebenarnya)
     """)
     st.stop()
@@ -48,7 +54,24 @@ def get_default_monitor_message():
 
 # --- FUNGSI PEMBANTU (UTILITIES) ---
 
+# Fungsi untuk Hashing Password BARU
+def hash_password(password):
+    """Menghasilkan hash dari password menggunakan bcrypt."""
+    # Enkode password ke bytes, lalu generate hash (salt + hash)
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+# Fungsi untuk Cek Password BARU
+def check_password(plain_password, hashed_password):
+    """Memverifikasi password yang dimasukkan dengan hash yang tersimpan."""
+    try:
+        # Enkode kembali hash yang tersimpan (dari string ke bytes) untuk perbandingan
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except (ValueError, TypeError):
+        # Tangani jika format hash salah atau password tersimpan kosong
+        return False
+        
 def load_data(file_name, required_cols):
+# ... (Fungsi load_data tidak diubah)
     """Memuat data dari CSV atau membuat DataFrame baru, dan memastikan semua kolom penting ada."""
     
     if os.path.exists(file_name):
@@ -78,10 +101,12 @@ def load_data(file_name, required_cols):
     return df
 
 def save_data(df, file_name):
+# ... (Fungsi save_data tidak diubah)
     """Menyimpan DataFrame ke CSV."""
     df.to_csv(file_name, index=False)
 
 def generate_qr_code(data):
+# ... (Fungsi generate_qr_code tidak diubah)
     """Menghasilkan gambar QR code (Barcode) di memori."""
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4,)
     qr.add_data(data)
@@ -93,6 +118,7 @@ def generate_qr_code(data):
     return buffer
 
 def add_to_log(barcode_id, name, event_type, timestamp):
+# ... (Fungsi add_to_log tidak diubah)
     """Menambahkan entri baru ke tabel log."""
     new_log = {
         'event_id': str(uuid.uuid4()),
@@ -107,12 +133,14 @@ def add_to_log(barcode_id, name, event_type, timestamp):
     save_data(st.session_state.log, LOG_FILE)
 
 def set_monitor_message(html_content, type='default'):
+# ... (Fungsi set_monitor_message tidak diubah)
     """Menyimpan pesan HTML untuk ditampilkan di Gate Monitor dan mereset timer."""
     st.session_state.monitor_html = html_content
     st.session_state.monitor_type = type
     st.session_state.monitor_display_time = datetime.now() 
 
 def process_scan(scan_id, feedback_placeholder):
+# ... (Fungsi process_scan tidak diubah)
     """Logika utama untuk memproses ID Barcode yang diterima."""
     
     if not scan_id or scan_id in ["simulasi1234", "simulasi_camera_id_12345"]: 
@@ -137,8 +165,8 @@ def process_scan(scan_id, feedback_placeholder):
             # Aksi MASUK
             st.session_state.data.loc[scan_id, 'status'] = 'IN'
             st.session_state.data.loc[scan_id, 'time_in'] = current_time 
-            st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      
-            st.session_state.data.loc[scan_id, 'duration'] = ''          
+            st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT       
+            st.session_state.data.loc[scan_id, 'duration'] = ''           
             save_data(st.session_state.data, DATA_FILE)
             add_to_log(scan_id, name, 'IN', current_time)
 
@@ -204,14 +232,14 @@ if 'app_mode' not in st.session_state:
 if 'logged_in_user_id' not in st.session_state:
     st.session_state.logged_in_user_id = None
 if 'user_role' not in st.session_state:
-    st.session_state.user_role = None 
+    st.session_state.user_role = None    
     
 # --- INISIALISASI MONITOR STATE (Perbaikan Timer) ---
 if 'monitor_html' not in st.session_state:
-    st.session_state.monitor_html = get_default_monitor_message() 
+    st.session_state.monitor_html = get_default_monitor_message()    
     
-if 'monitor_type' not in st.session_state: 
-    st.session_state.monitor_type = 'default' 
+if 'monitor_type' not in st.session_state:    
+    st.session_state.monitor_type = 'default'    
 
 if 'monitor_display_time' not in st.session_state:
     # Set waktu lampau agar langsung tampil default
@@ -244,7 +272,7 @@ elif st.session_state.app_mode not in ['login', 'register']:
         st.session_state.app_mode = 'login'
         st.session_state.logged_in_user_id = None
         st.session_state.user_role = None
-        st.rerun() 
+        st.rerun()    
 
 if st.session_state.app_mode != 'gate_monitor':
     st.title("🅿️ Aplikasi Dashboard Parkir Barcode")
@@ -256,6 +284,7 @@ if st.session_state.app_mode != 'gate_monitor':
 
 # ----------------- MODE MONITOR GERBANG -----------------
 if st.session_state.app_mode == 'gate_monitor':
+# ... (Logika Monitor Gerbang tidak diubah)
     
     # Logika Timer Reset Pesan
     time_elapsed = datetime.now() - st.session_state.monitor_display_time
@@ -313,8 +342,12 @@ elif st.session_state.app_mode == 'login':
                         first_match = found_user.iloc[0]
 
                         stored_password_clean = str(first_match['password']).strip()
-
-                        if stored_password_clean == login_pass: 
+                        
+                        # --- PERUBAHAN UTAMA DI SINI: Cek password menggunakan bcrypt ---
+                        # Pastikan password yang disimpan tidak kosong dan bukan NaN sebelum cek
+                        # Jika stored_password bukan hasil hash, check_password akan mengembalikan False.
+                        if stored_password_clean and check_password(login_pass, stored_password_clean):
+                        # ----------------------------------------------------------------------
                             st.session_state.app_mode = 'user_dashboard'
                             st.session_state.user_role = 'user'
                             st.session_state.logged_in_user_id = first_match['barcode_id'] 
@@ -354,11 +387,17 @@ elif st.session_state.app_mode == 'register':
                     st.error("NIM/NIP ini sudah terdaftar. Silakan Login.")
                 else:
                     new_barcode_id = str(uuid.uuid4())
+                    
+                    # --- PERUBAHAN UTAMA DI SINI: Hash password sebelum disimpan ---
+                    hashed_password = hash_password(password)
+                    # -----------------------------------------------------------------
+                    
                     new_data = {
                         'barcode_id': new_barcode_id,
                         'name': name,
                         'user_id': user_id,
-                        'password': password, 
+                        # Simpan password yang sudah di-hash
+                        'password': hashed_password, 
                         'vehicle_type': vehicle_type,
                         'license_plate': license_plate,
                         'status': 'OUT',
@@ -377,6 +416,7 @@ elif st.session_state.app_mode == 'register':
 
 
 elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_role == 'user':
+# ... (Logika User Dashboard tidak diubah)
     user_id = st.session_state.logged_in_user_id
     if user_id not in st.session_state.data.index:
         st.error("Data pengguna tidak ditemukan. Silakan login ulang.")
@@ -426,6 +466,7 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
 
 # ----------------- DASHBOARD ADMIN/PETUGAS -----------------
 elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_role == 'admin':
+# ... (Logika Dashboard Admin tidak diubah)
     st.header("Dashboard Petugas Parkir (Akses Admin)")
     
     col_input, col_stats = st.columns([6, 2])
@@ -542,6 +583,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
 # ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN -----------------
 elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_role == 'admin':
+# ... (Logika Analitik dan Grafik tidak diubah)
     st.header("Analitik Parkir: Log & Grafik")
     
     if st.session_state.log.empty:
@@ -613,5 +655,3 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
-
-
