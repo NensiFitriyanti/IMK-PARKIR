@@ -37,6 +37,42 @@ MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor (5 detik)
 REQUIRED_USER_COLUMNS = ['barcode_id', 'name', 'user_id', 'vehicle_type', 'license_plate', 'password', 'status', 'time_in', 'time_out', 'duration']
 REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_type']
 
+
+# -----------------------------------------------------------------------------
+# >>> PENAMBAHAN KODE UNTUK LATAR BELAKANG DIMULAI DI SINI <<<
+# -----------------------------------------------------------------------------
+def set_background(image_url):
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang."""
+    
+    # Keterangan Penting: Pastikan file BG-FASILKOM.jpg (atau formatnya) ada di direktori yang sama!
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("{image_url}");
+            background-size: cover; /* Memastikan gambar menutupi seluruh background */
+            background-attachment: fixed; /* Membuat gambar tetap saat scroll */
+            background-position: center; /* Memposisikan gambar di tengah */
+        }}
+        /* Menyesuaikan Sidebar agar konten tetap terbaca */
+        [data-testid="stSidebar"] {{
+            background-color: rgba(255, 255, 255, 0.9); /* Latar Putih transparan */
+            border-right: 1px solid #ccc;
+        }}
+        /* Atur warna teks agar tetap terbaca (misalnya menjadi lebih gelap) */
+        h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
+            color: #333333; 
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+# -----------------------------------------------------------------------------
+# >>> PENAMBAHAN KODE UNTUK LATAR BELAKANG SELESAI DI SINI <<<
+# -----------------------------------------------------------------------------
+
+
 # --- FUNGSI UTAMA (DEFAULT MONITOR MESSAGE) ---
 
 def get_default_monitor_message():
@@ -220,6 +256,12 @@ def process_scan(scan_id, feedback_placeholder):
 
 # --- INISIALISASI APLIKASI DAN SESSION STATE ---
 st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
+
+# -----------------------------------------------------------------------------
+# >>> PEMANGGILAN FUNGSI LATAR BELAKANG DITAMBAHKAN DI SINI <<<
+# PASTIKAN FILE BG-FASILKOM.jpg ADA DI FOLDER YANG SAMA!
+set_background('BG-FASILKOM.jpg') 
+# -----------------------------------------------------------------------------
 
 if 'data' not in st.session_state:
     st.session_state.data = load_data(DATA_FILE, REQUIRED_USER_COLUMNS)
