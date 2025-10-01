@@ -78,7 +78,7 @@ def set_background(image_path):
             /* 2. AREA KONTEN UTAMA DIBUAT BURAM (Opacity 90%) */
             /* stVerticalBlock adalah container utama untuk konten dashboard */
             [data-testid="stVerticalBlock"] {{
-                background-color: rgba(0, 0, 0, 0.9);
+                background-color: rgba(255, 255, 255, 0.9);
                 padding: 10px 20px 20px 20px; 
                 border-radius: 10px; 
             }}
@@ -862,6 +862,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
