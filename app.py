@@ -5,8 +5,8 @@ import qrcode
 from io import BytesIO
 import os
 from datetime import datetime, timedelta
-import altair as alt 
-import numpy as np 
+import altair as alt
+import numpy as np
 import time
 import bcrypt
 import base64 
@@ -21,9 +21,15 @@ try:
     ADMIN_PASS = st.secrets.secrets_pass.password
     
 except:
-    # Default credentials for local testing if secrets.toml is not available
-    ADMIN_USER = "petugas" 
-    ADMIN_PASS = "12345"
+    st.error("""
+        FATAL ERROR: Kredensial Admin tidak ditemukan.
+        Pastikan Anda memiliki file `.streamlit/secrets.toml` yang berisi:
+        [admin]
+        username = "..."
+        [secrets_pass]
+        password = "..." 
+    """)
+    st.stop()
     
 MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor (5 detik)
 
@@ -42,54 +48,43 @@ def get_base64_of_bin_file(bin_file):
             data = f.read()
         return base64.b64encode(data).decode()
     except FileNotFoundError: 
+        # Mengembalikan None jika file tidak ditemukan
         print(f"Error: File gambar '{bin_file}' tidak ditemukan.")
         return None
 
 def set_background(image_path):
-    """Menyuntikkan CSS untuk mengatur gambar latar belakang buram."""
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64."""
     
     base64_img = get_base64_of_bin_file(image_path)
     
+    # Perbaikan: Cek 'is not None' untuk menghindari NameError jika gagal membaca file
     if base64_img is not None:
         st.markdown(
             f"""
             <style>
-            /* 1. LAPISAN LATAR BELAKANG DENGAN GAMBAR BURAM (Menggunakan ::before) */
-            .stApp::before {{
-                content: "";
-                position: fixed; /* Membuatnya tetap di tempat saat scroll */
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
+            .stApp {{
+                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
                 background-image: url("data:image/jpeg;base64,{base64_img}");
                 background-size: cover; 
                 background-attachment: fixed; 
                 background-position: center;
-                
-                /* >>> INI YANG MEMBUAT GAMBAR GEDUNG (LATAR BELAKANG) BURAM <<< */
-                filter: blur(5px); /* Nilai blur: 5px */
-                -webkit-filter: blur(5px); 
-                
-                z-index: -1; /* Pindahkan ke belakang semua elemen Streamlit */
             }}
-
-            /* 2. Sidebar dengan latar belakang semi-transparan (tidak blur) */
+            /* 1. Sidebar Transparan (Opacity 80%) */
             [data-testid="stSidebar"] {{
                 background-color: rgba(255, 255, 255, 0.8); 
                 border-right: 1px solid #ccc;
             }}
 
-            /* 3. Konten utama (kotak dashboard/block-container) dengan latar belakang semi-transparan */
-            /* Ini menargetkan kontainer yang memuat semua widget. */
-            .main .block-container {{
-                background-color: rgba(255, 255, 255, 0.9); /* Latar konten semi transparan */
-                border-radius: 10px; 
+            /* 2. AREA KONTEN UTAMA DIBUAT BURAM (Opacity 90%) */
+            /* stVerticalBlock adalah container utama untuk konten dashboard */
+            [data-testid="stVerticalBlock"] {{
+                background-color: rgba(255, 255, 255, 0.9);
                 padding: 10px 20px 20px 20px; 
+                border-radius: 10px; 
             }}
             
-            /* 4. Teks Berbayangan agar tetap terbaca di atas buram */
-            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir, label, button, .st-df, .st-ck {{
+            /* 3. Teks Berbayangan agar tetap terbaca di atas gambar/kontainer buram */
+            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
                 color: #333333; 
                 text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
             }}
@@ -226,8 +221,8 @@ def process_scan(scan_id, feedback_placeholder):
             # Aksi MASUK
             st.session_state.data.loc[scan_id, 'status'] = 'IN'
             st.session_state.data.loc[scan_id, 'time_in'] = current_time 
-            st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT       
-            st.session_state.data.loc[scan_id, 'duration'] = ''           
+            st.session_state.data.loc[scan_id, 'time_out'] = pd.NaT      
+            st.session_state.data.loc[scan_id, 'duration'] = ''          
             save_data(st.session_state.data, DATA_FILE)
             add_to_log(scan_id, name, 'IN', current_time)
 
@@ -310,8 +305,8 @@ if 'user_role' not in st.session_state:
 if 'monitor_html' not in st.session_state:
     st.session_state.monitor_html = get_default_monitor_message()  
     
-if 'monitor_type' not in st.session_state:     
-    st.session_state.monitor_type = 'default'   
+if 'monitor_type' not in st.session_state:    
+    st.session_state.monitor_type = 'default'    
 
 if 'monitor_display_time' not in st.session_state:
     st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
@@ -524,16 +519,12 @@ elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_rol
         st.subheader("Informasi Waktu")
         
         if pd.notna(user_data['time_in']):
-            # Pastikan kolom adalah datetime sebelum memanggil strftime
-            time_in_dt = pd.to_datetime(user_data['time_in'])
-            st.markdown(f"**Waktu Masuk:** {time_in_dt.strftime('%d %b %Y, %H:%M:%S')}")
+            st.markdown(f"**Waktu Masuk:** {user_data['time_in'].strftime('%d %b %Y, %H:%M:%S')}")
         else:
             st.markdown(f"**Waktu Masuk:** Belum ada data masuk.")
             
         if user_data['status'] == 'OUT' and pd.notna(user_data['time_out']):
-            # Pastikan kolom adalah datetime sebelum memanggil strftime
-            time_out_dt = pd.to_datetime(user_data['time_out'])
-            st.markdown(f"**Waktu Keluar:** {time_out_dt.strftime('%d %b %Y, %H:%M:%S')}")
+            st.markdown(f"**Waktu Keluar:** {user_data['time_out'].strftime('%d %b %Y, %H:%M:%S')}")
             st.success(f"**Durasi Parkir:** {user_data['duration']}")
 
     with col_qr:
@@ -576,7 +567,6 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         with tab_file:
             uploaded_file = st.file_uploader("Unggah Gambar Barcode/QR Code (.png, .jpg)", type=['png', 'jpg', 'jpeg'])
             if uploaded_file is not None:
-                # Simulasi deteksi ID dari nama file (Harus diganti dengan OCR/deteksi Barcode)
                 simulated_id = uploaded_file.name.split('.')[0] 
                 st.info(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id}** (berdasarkan nama file).")
                 if st.button("PROSES DENGAN GAMBAR"):
@@ -589,7 +579,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         with tab_camera:
             camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
             if camera_image is not None:
-                # Menggunakan ID simulasi. Ganti dengan logika deteksi barcode jika ada.
+                # Menggunakan ID simulasi. Pastikan ini ID yang valid jika Anda mengujinya.
                 simulated_id_cam = "simulasi1234" 
                 st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
                 st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
@@ -643,9 +633,8 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     else:
         st.info("Filter Aktif: Menampilkan **Semua** data pengguna.")
         
-    display_data = df_filtered_table[['barcode_id', 'name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
+    display_data = df_filtered_table[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
-    # Format ulang tanggal/waktu agar mudah dibaca di tabel
     display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
     display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
 
@@ -749,3 +738,127 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
 
                     except Exception as e:
                         st.error(f"Terjadi kesalahan saat mereset password: {e}")
+    
+    st.markdown("---")
+    
+    st.subheader("2. ⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
+    st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
+
+    if st.button("Konversi Semua Password Lama ke Format Bcrypt"):
+        df = st.session_state.data.copy()
+        passwords_migrated = 0
+        
+        for index, row in df.iterrows():
+            plain_password = str(row['password']).strip()
+            
+            if len(plain_password) < 50 or not plain_password.startswith('$'): 
+                
+                if plain_password and plain_password.lower() != 'nan':
+                    try:
+                        hashed = hash_password(plain_password)
+                        df.loc[index, 'password'] = hashed
+                        passwords_migrated += 1
+                    except Exception as e:
+                        st.warning(f"Gagal meng-hash password untuk pengguna {row['name']}: {e}")
+        
+        if passwords_migrated > 0:
+            st.session_state.data = df
+            save_data(st.session_state.data, DATA_FILE)
+            st.success(f"✅ Migrasi berhasil! **{passwords_migrated}** password lama telah di-hash dengan bcrypt.")
+            st.balloons()
+            st.rerun()
+        else:
+            st.info("Semua password sudah dalam format bcrypt atau kosong. Tidak ada yang perlu dimigrasi.")
+
+# ----------------- DASHBOARD ANALITIK & GRAFIK ADMIN -----------------
+elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_role == 'admin':
+    st.header("Analitik Parkir: Log & Grafik")
+    
+    if st.session_state.log.empty:
+        st.warning("Belum ada data transaksi yang tercatat untuk dianalisis.")
+        st.stop()
+
+    df_log = st.session_state.log.copy()
+    
+    df_log['timestamp'] = pd.to_datetime(df_log['timestamp'], errors='coerce')
+    df_log.dropna(subset=['timestamp'], inplace=True)
+    
+    user_names = ['Semua Pengguna'] + sorted(df_log['name'].unique().tolist())
+    selected_name = st.selectbox("Filter berdasarkan Pengguna:", user_names)
+
+    if selected_name != 'Semua Pengguna':
+        df_log_filtered = df_log[df_log['name'] == selected_name]
+    else:
+        df_log_filtered = df_log
+        
+    st.markdown("---")
+    
+    # GRAFIK 1: Trend Transaksi Harian
+    st.subheader("Grafik 1: Trend Transaksi Masuk/Keluar Harian")
+    
+    df_log_daily = df_log_filtered.copy()
+    df_log_daily['date'] = df_log_daily['timestamp'].dt.date
+    
+    df_daily_counts = df_log_daily.groupby(['date', 'event_type']).size().reset_index(name='count')
+
+    if not df_daily_counts.empty:
+        chart1 = alt.Chart(df_daily_counts).mark_bar().encode(
+            x=alt.X('date:T', title='Tanggal'),
+            y=alt.Y('count:Q', title='Jumlah Transaksi'),
+            color=alt.Color('event_type:N', title='Tipe Transaksi', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#FF9800'])),
+            tooltip=['date', 'event_type', 'count']
+        ).properties(
+            title='Jumlah Transaksi Masuk dan Keluar per Hari'
+        ).interactive()
+        st.altair_chart(chart1, use_container_width=True)
+    else:
+        st.info("Tidak ada data transaksi harian yang sesuai filter.")
+
+    st.markdown("---")
+
+    # GRAFIK 2: Distribusi Transaksi per Jam
+    st.subheader("Grafik 2: Distribusi Transaksi per Jam (Tren Jam Sibuk)")
+    
+    df_log_hourly = df_log_filtered.copy()
+    df_log_hourly['hour'] = df_log_hourly['timestamp'].dt.hour
+    
+    df_hourly_counts = df_log_hourly.groupby('hour').size().reset_index(name='count')
+    df_hourly_counts['hour_label'] = df_hourly_counts['hour'].apply(lambda x: f"{x:02d}:00")
+
+    if not df_hourly_counts.empty:
+        chart2 = alt.Chart(df_hourly_counts).mark_line(point=True).encode(
+            x=alt.X('hour_label:N', title='Jam (Waktu Lokal)'),
+            y=alt.Y('count:Q', title='Jumlah Transaksi'),
+            tooltip=['hour_label', 'count']
+        ).properties(
+            title='Total Transaksi Berdasarkan Jam'
+        ).interactive()
+        st.altair_chart(chart2, use_container_width=True)
+    else:
+        st.info("Tidak ada data transaksi per jam yang sesuai filter.")
+    
+    st.markdown("---")
+    
+    # GRAFIK 3: Status Parkir Berdasarkan Jenis Kendaraan
+    st.subheader("Grafik 3: Status Parkir Berdasarkan Jenis Kendaraan (Saat Ini)")
+    
+    df_status = st.session_state.data.copy()
+    df_status_counts = df_status.groupby(['vehicle_type', 'status']).size().reset_index(name='count')
+
+    if not df_status_counts.empty:
+        chart3 = alt.Chart(df_status_counts).mark_bar().encode(
+            x=alt.X('vehicle_type:N', title='Jenis Kendaraan'),
+            y=alt.Y('count:Q', title='Jumlah Kendaraan'),
+            color=alt.Color('status:N', title='Status', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])),
+            column=alt.Column('status:N', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+            tooltip=['vehicle_type', 'status', 'count']
+        ).properties(
+            title='Status Parkir Saat Ini'
+        ).interactive()
+        st.altair_chart(chart3, use_container_width=True)
+    else:
+        st.info("Tidak ada data status parkir.")
+
+    st.markdown("---")
+    st.subheader("Tabel Log Transaksi Terakhir")
+    st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
