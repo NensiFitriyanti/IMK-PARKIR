@@ -5,8 +5,8 @@ import qrcode
 from io import BytesIO
 import os
 from datetime import datetime, timedelta
-import altair as alt # Walaupun tidak dipakai, tetap ada di kode asli
-import numpy as np # Walaupun tidak dipakai, tetap ada di kode asli
+import altair as alt 
+import numpy as np 
 import time
 import bcrypt
 import base64 
@@ -21,13 +21,9 @@ try:
     ADMIN_PASS = st.secrets.secrets_pass.password
     
 except:
-    # Ini akan mencegah aplikasi crash di lingkungan lokal tanpa secrets.toml
-    # Namun, di Streamlit Cloud, ini akan menampilkan error dan berhenti
-    ADMIN_USER = "petugas" # Default jika secrets tidak ada
-    ADMIN_PASS = "12345"  # Default jika secrets tidak ada
-    # Anda bisa uncomment baris di bawah jika ini berjalan di Streamlit Cloud dan secrets.toml wajib
-    # st.error("FATAL ERROR: Kredensial Admin tidak ditemukan.")
-    # st.stop()
+    # Default credentials for local testing if secrets.toml is not available
+    ADMIN_USER = "petugas" 
+    ADMIN_PASS = "12345"
     
 MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor (5 detik)
 
@@ -42,7 +38,6 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 def get_base64_of_bin_file(bin_file):
     """Membaca file dan mengkonversinya menjadi Base64 string."""
     try:
-        # PENTING: Pastikan file BG-FASILKOM.jpeg ada di direktori yang sama
         with open(bin_file, 'rb') as f:
             data = f.read()
         return base64.b64encode(data).decode()
@@ -51,50 +46,50 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def set_background(image_path):
-    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64 & Blur."""
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang buram."""
     
     base64_img = get_base64_of_bin_file(image_path)
     
-    # Perbaikan: Cek 'is not None' untuk menghindari NameError jika gagal membaca file
     if base64_img is not None:
         st.markdown(
             f"""
             <style>
-            .stApp {{
-                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
+            /* 1. LAPISAN LATAR BELAKANG DENGAN GAMBAR BURAM (Menggunakan ::before) */
+            .stApp::before {{
+                content: "";
+                position: fixed; /* Membuatnya tetap di tempat saat scroll */
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
                 background-image: url("data:image/jpeg;base64,{base64_img}");
                 background-size: cover; 
                 background-attachment: fixed; 
                 background-position: center;
-                /* TAMBAHKAN FILTER BLUR HANYA PADA BACKGROUND IMAGE */
-                /* Karena Streamlit menempatkan gambar sebagai background di .stApp, 
-                   kita akan menggunakan backdrop-filter pada konten di depannya. */
+                
+                /* >>> INI YANG MEMBUAT GAMBAR GEDUNG (LATAR BELAKANG) BURAM <<< */
+                filter: blur(5px); /* Nilai blur: 5px */
+                -webkit-filter: blur(5px); 
+                
+                z-index: -1; /* Pindahkan ke belakang semua elemen Streamlit */
             }}
-            
-            /* 1. Sidebar Semi-Transparan */
+
+            /* 2. Sidebar dengan latar belakang semi-transparan (tidak blur) */
             [data-testid="stSidebar"] {{
                 background-color: rgba(255, 255, 255, 0.8); 
                 border-right: 1px solid #ccc;
             }}
 
-            /* 2. AREA KONTEN UTAMA DIBUAT BURAM MENGGUNAKAN BACKDROP-FILTER */
-            /* Ini akan membuat latar belakang (gambar) yang terlihat melalui kotak 
-               konten menjadi buram, sementara konten (teks, dll.) di dalamnya tetap tajam. */
-            /* stVerticalBlock adalah container utama untuk konten dashboard (kotak putih di tengah) */
-            [data-testid="stVerticalBlock"] {{
-                /* Latar belakang semi-transparan */
-                background-color: rgba(255, 255, 255, 0.7); 
-                
-                /* EFEK BURAM PADA LATAR BELAKANG YANG TERLIHAT DI BELAKANG ELEMEN INI */
-                backdrop-filter: blur(5px); 
-                -webkit-backdrop-filter: blur(5px); /* Untuk Safari */
-                
-                padding: 10px 20px 20px 20px; 
+            /* 3. Konten utama (kotak dashboard/block-container) dengan latar belakang semi-transparan */
+            /* Ini menargetkan kontainer yang memuat semua widget. */
+            .main .block-container {{
+                background-color: rgba(255, 255, 255, 0.9); /* Latar konten semi transparan */
                 border-radius: 10px; 
+                padding: 10px 20px 20px 20px; 
             }}
             
-            /* 3. Teks Berbayangan agar tetap terbaca di atas buram (Opsional, tapi bagus) */
-            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
+            /* 4. Teks Berbayangan agar tetap terbaca di atas buram */
+            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir, label, button, .st-df, .st-ck {{
                 color: #333333; 
                 text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
             }}
@@ -296,7 +291,6 @@ st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
 # -----------------------------------------------------------------------------
 # >>> PEMANGGILAN FUNGSI LATAR BELAKANG DITAMBAHKAN DI SINI <<<
-# Pastikan file 'BG-FASILKOM.jpeg' ada di direktori yang sama!
 set_background('BG-FASILKOM.jpeg') 
 # -----------------------------------------------------------------------------
 
