@@ -8,10 +8,7 @@ from datetime import datetime, timedelta
 import altair as alt
 import numpy as np
 import time
-
-# --- TAMBAHKAN IMPORT BCYPT ---
 import bcrypt
-# ------------------------------
 
 # --- KONFIGURASI APLIKASI (Menggunakan st.secrets) ---
 DATA_FILE = 'parking_users.csv'
@@ -20,8 +17,7 @@ LOG_FILE = 'parking_log.csv'
 # Memuat kredensial dari st.secrets
 try:
     ADMIN_USER = st.secrets.admin.username
-    ADMIN_PASS = st.secrets.admin.password
-    
+    ADMIN_PASS = st.secrets.secrets_pass.password # Menggunakan secrets_pass.password
 except:
     # Hentikan aplikasi jika secrets.toml tidak ditemukan/salah.
     st.error("""
@@ -29,7 +25,8 @@ except:
         Pastikan Anda memiliki file `.streamlit/secrets.toml` yang berisi:
         [admin]
         username = "..."
-        password = "..."
+        [secrets_pass]
+        password = "..." 
         (atau kredensial Anda yang sebenarnya)
     """)
     st.stop()
@@ -295,7 +292,7 @@ if st.session_state.app_mode == 'gate_monitor':
         st.session_state.monitor_type = 'default'
         # Reset display time ke waktu lampau agar langsung tampil default jika monitor dibuka lagi
         st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
-        st.experimental_rerun() # Memaksa rerun untuk update visual ke default
+        st.rerun() # GANTI: st.experimental_rerun() -> st.rerun()
         
     # Tampilkan pesan monitor
     st.markdown(
@@ -310,7 +307,7 @@ if st.session_state.app_mode == 'gate_monitor':
         st.empty().markdown(f"<div style='text-align: right; color: gray;'>⏳ Kembali dalam {time_left} detik...</div>", unsafe_allow_html=True)
         
         time.sleep(1) # Tunggu 1 detik
-        st.experimental_rerun() # Memaksa Streamlit untuk menjalankan ulang skrip dan cek waktu berikutnya
+        st.rerun() # GANTI: st.experimental_rerun() -> st.rerun()
     # ------------------------------------------
     
     st.stop() # Hentikan eksekusi di sini agar hanya monitor yang tampil
@@ -614,7 +611,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
 
 
 # =================================================================
-# MODE BARU: ADMIN RESET PASSWORD (DITAMBAH MIGRASI DI SINI)
+# MODE BARU: ADMIN RESET PASSWORD 
 # =================================================================
 elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.user_role == 'admin':
     
@@ -687,7 +684,7 @@ elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.us
     st.markdown("---")
     
     # =================================================================
-    # BAGIAN 2: OPSI ADMIN: MIGRASI PASSWORD LAMA (PINDAHAN DARI ADMIN DASHBOARD)
+    # BAGIAN 2: OPSI ADMIN: MIGRASI PASSWORD LAMA 
     # =================================================================
     st.subheader("2. ⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
     st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
