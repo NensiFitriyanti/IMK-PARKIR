@@ -44,7 +44,7 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 def set_background(image_url):
     """Menyuntikkan CSS untuk mengatur gambar latar belakang."""
     
-    # Keterangan Penting: Pastikan file BG-FASILKOM.jpg (atau formatnya) ada di direktori yang sama!
+    # Keterangan Penting: Pastikan file BG-FASILKOM.jpeg ada di direktori yang sama!
     st.markdown(
         f"""
         <style>
@@ -259,8 +259,8 @@ st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
 # -----------------------------------------------------------------------------
 # >>> PEMANGGILAN FUNGSI LATAR BELAKANG DITAMBAHKAN DI SINI <<<
-# PASTIKAN FILE BG-FASILKOM.jpg ADA DI FOLDER YANG SAMA!
-set_background('BG-FASILKOM.jpg') 
+# PASTIKAN FILE BG-FASILKOM.jpeg ADA DI FOLDER YANG SAMA!
+set_background('BG-FASILKOM.jpeg') 
 # -----------------------------------------------------------------------------
 
 if 'data' not in st.session_state:
