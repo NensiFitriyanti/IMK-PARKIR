@@ -875,13 +875,16 @@ if not df_status_counts.empty:
     chart3 = alt.Chart(df_status_counts).mark_bar().encode(
         x=alt.X('vehicle_type:N', title='Jenis Kendaraan'),
         y=alt.Y('count:Q', title='Jumlah Kendaraan'),
-        color=alt.Color('status:N', title='Status', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])),
-        column=alt.Column('status:N', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+        color=alt.Color(
+            'status:N',
+            title='Status',
+            scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])
+        ),
         tooltip=['vehicle_type', 'status', 'count']
     ).properties(
         title='Status Parkir Saat Ini',
-        width=30,   # atur lebar chart per kolom
-        height=10   # atur tinggi chart
+        width=500,   # lebar total chart
+        height=300   # tinggi chart
     ).interactive()
     st.altair_chart(chart3, use_container_width=True)
 else:
@@ -893,7 +896,3 @@ st.dataframe(
     df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False),
     use_container_width=True
 )
-
-
-
-
