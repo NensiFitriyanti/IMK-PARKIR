@@ -54,27 +54,30 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def set_background(image_path):
-    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64."""
-    
-    base64_img = get_base64_of_bin_file(image_path)
+    # ... (kode base64) ...
     
     if base64_img:
         st.markdown(
             f"""
             <style>
             .stApp {{
-                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
                 background-image: url("data:image/jpeg;base64,{base64_img}");
-                background-size: cover; 
-                background-attachment: fixed; 
-                background-position: center;
+                /* ... (properti gambar lainnya) ... */
             }}
-            /* Menyesuaikan Sidebar agar konten tetap terbaca */
+            /* 1. Sidebar lebih transparan */
             [data-testid="stSidebar"] {{
-                background-color: rgba(255, 255, 255, 0.9); /* Latar Putih transparan */
+                background-color: rgba(255, 255, 255, 0.8); /* Dibuat lebih transparan (0.8) */
                 border-right: 1px solid #ccc;
             }}
-            /* Atur warna teks agar tetap terbaca */
+            
+            /* 2. AREA KONTEN UTAMA DIBUAT BURAM */
+            [data-testid="stVerticalBlock"] {{
+                background-color: rgba(255, 255, 255, 0.9); /* Latar Putih transparan (0.9) */
+                padding: 10px 20px 20px 20px; /* Jarak padding agar konten tidak mepet */
+                border-radius: 10px; 
+            }}
+            
+            /* 3. Atur warna teks */
             h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
                 color: #333333; 
                 text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
@@ -851,3 +854,4 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
