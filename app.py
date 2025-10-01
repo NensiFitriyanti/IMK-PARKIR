@@ -17,10 +17,19 @@ LOG_FILE = 'parking_log.csv'
 try:
     ADMIN_USER = st.secrets.admin.username
     ADMIN_PASS = st.secrets.admin.password
+    
 except:
-    # Fallback jika secrets.toml tidak ditemukan/salah
-    ADMIN_USER = "petugas"
-    ADMIN_PASS = "admin123"
+    # Hentikan aplikasi jika secrets.toml tidak ditemukan/salah.
+    # Ini memastikan tidak ada kredensial yang di-hardcode.
+    st.error("""
+        FATAL ERROR: Kredensial Admin tidak ditemukan.
+        Pastikan Anda memiliki file `.streamlit/secrets.toml` yang berisi:
+        [admin]
+        username = "petugas"
+        password = "admin123"
+        (atau kredensial Anda yang sebenarnya)
+    """)
+    st.stop()
     
 MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor
 
@@ -606,3 +615,4 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     ).interactive() 
 
     st.altair_chart(chart, use_container_width=True)
+
