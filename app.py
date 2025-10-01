@@ -9,19 +9,18 @@ import altair as alt
 import numpy as np
 import time
 import bcrypt
-import base64 # <-- PASTIKAN INI ADA!
+import base64 
 
 # --- KONFIGURASI APLIKASI ---
 DATA_FILE = 'parking_users.csv'
 LOG_FILE = 'parking_log.csv'
 
-# Memuat kredensial dari st.secrets. Pastikan file .streamlit/secrets.toml ada
+# Memuat kredensial dari st.secrets.
 try:
     ADMIN_USER = st.secrets.admin.username
     ADMIN_PASS = st.secrets.secrets_pass.password
     
 except:
-    # Ini adalah pesan error fatal yang tampil jika secrets.toml salah
     st.error("""
         FATAL ERROR: Kredensial Admin tidak ditemukan.
         Pastikan Anda memiliki file `.streamlit/secrets.toml` yang berisi:
@@ -29,7 +28,6 @@ except:
         username = "..."
         [secrets_pass]
         password = "..." 
-        (atau kredensial Anda yang sebenarnya)
     """)
     st.stop()
     
@@ -40,7 +38,7 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 
 
 # -----------------------------------------------------------------------------
-# >>> FUNGSI UNTUK LATAR BELAKANG DIMULAI DI SINI <<<
+# >>> FUNGSI UNTUK LATAR BELAKANG (BASE64 & BURAM) <<<
 # -----------------------------------------------------------------------------
 
 def get_base64_of_bin_file(bin_file):
@@ -49,35 +47,43 @@ def get_base64_of_bin_file(bin_file):
         with open(bin_file, 'rb') as f:
             data = f.read()
         return base64.b64encode(data).decode()
-    except FileNotFoundError:
-        st.error(f"Error: File gambar '{bin_file}' tidak ditemukan. Pastikan nama file dan lokasinya sudah benar.")
+    except FileNotFoundError: 
+        # Mengembalikan None jika file tidak ditemukan
+        print(f"Error: File gambar '{bin_file}' tidak ditemukan.")
         return None
 
 def set_background(image_path):
-    # ... (kode base64) ...
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64."""
     
-    if base64_img:
+    base64_img = get_base64_of_bin_file(image_path)
+    
+    # Perbaikan: Cek 'is not None' untuk menghindari NameError jika gagal membaca file
+    if base64_img is not None:
         st.markdown(
             f"""
             <style>
             .stApp {{
+                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
                 background-image: url("data:image/jpeg;base64,{base64_img}");
-                /* ... (properti gambar lainnya) ... */
+                background-size: cover; 
+                background-attachment: fixed; 
+                background-position: center;
             }}
-            /* 1. Sidebar lebih transparan */
+            /* 1. Sidebar Transparan (Opacity 80%) */
             [data-testid="stSidebar"] {{
-                background-color: rgba(255, 255, 255, 0.8); /* Dibuat lebih transparan (0.8) */
+                background-color: rgba(255, 255, 255, 0.8); 
                 border-right: 1px solid #ccc;
             }}
-            
-            /* 2. AREA KONTEN UTAMA DIBUAT BURAM */
+
+            /* 2. AREA KONTEN UTAMA DIBUAT BURAM (Opacity 90%) */
+            /* stVerticalBlock adalah container utama untuk konten dashboard */
             [data-testid="stVerticalBlock"] {{
-                background-color: rgba(255, 255, 255, 0.9); /* Latar Putih transparan (0.9) */
-                padding: 10px 20px 20px 20px; /* Jarak padding agar konten tidak mepet */
+                background-color: rgba(255, 255, 255, 0.9);
+                padding: 10px 20px 20px 20px; 
                 border-radius: 10px; 
             }}
             
-            /* 3. Atur warna teks */
+            /* 3. Teks Berbayangan agar tetap terbaca di atas gambar/kontainer buram */
             h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
                 color: #333333; 
                 text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
@@ -86,6 +92,9 @@ def set_background(image_path):
             """,
             unsafe_allow_html=True
         )
+    else:
+        st.warning(f"File '{image_path}' tidak ditemukan. Latar belakang default (putih) digunakan.")
+        
 # -----------------------------------------------------------------------------
 # >>> FUNGSI UNTUK LATAR BELAKANG SELESAI DI SINI <<<
 # -----------------------------------------------------------------------------
@@ -277,7 +286,6 @@ st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
 # -----------------------------------------------------------------------------
 # >>> PEMANGGILAN FUNGSI LATAR BELAKANG DITAMBAHKAN DI SINI <<<
-# PASTIKAN FILE BG-FASILKOM.jpeg ADA DI FOLDER YANG SAMA!
 set_background('BG-FASILKOM.jpeg') 
 # -----------------------------------------------------------------------------
 
@@ -854,4 +862,3 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
-
