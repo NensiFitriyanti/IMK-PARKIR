@@ -5,8 +5,8 @@ import qrcode
 from io import BytesIO
 import os
 from datetime import datetime, timedelta
-import altair as alt 
-import numpy as np 
+import altair as alt # Walaupun tidak dipakai, tetap ada di kode asli
+import numpy as np # Walaupun tidak dipakai, tetap ada di kode asli
 import time
 import bcrypt
 import base64 
@@ -21,9 +21,13 @@ try:
     ADMIN_PASS = st.secrets.secrets_pass.password
     
 except:
-    # Default credentials for local testing if secrets.toml is not available
-    ADMIN_USER = "petugas" 
-    ADMIN_PASS = "12345"
+    # Ini akan mencegah aplikasi crash di lingkungan lokal tanpa secrets.toml
+    # Namun, di Streamlit Cloud, ini akan menampilkan error dan berhenti
+    ADMIN_USER = "petugas" # Default jika secrets tidak ada
+    ADMIN_PASS = "12345"  # Default jika secrets tidak ada
+    # Anda bisa uncomment baris di bawah jika ini berjalan di Streamlit Cloud dan secrets.toml wajib
+    # st.error("FATAL ERROR: Kredensial Admin tidak ditemukan.")
+    # st.stop()
     
 MONITOR_TIMEOUT_SECONDS = 5 # Durasi tampil pesan sukses di monitor (5 detik)
 
@@ -38,6 +42,7 @@ REQUIRED_LOG_COLUMNS = ['event_id', 'barcode_id', 'name', 'timestamp', 'event_ty
 def get_base64_of_bin_file(bin_file):
     """Membaca file dan mengkonversinya menjadi Base64 string."""
     try:
+        # PENTING: Pastikan file BG-FASILKOM.jpeg ada di direktori yang sama
         with open(bin_file, 'rb') as f:
             data = f.read()
         return base64.b64encode(data).decode()
@@ -46,50 +51,50 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def set_background(image_path):
-    """Menyuntikkan CSS untuk mengatur gambar latar belakang buram."""
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64 & Blur."""
     
     base64_img = get_base64_of_bin_file(image_path)
     
+    # Perbaikan: Cek 'is not None' untuk menghindari NameError jika gagal membaca file
     if base64_img is not None:
         st.markdown(
             f"""
             <style>
-            /* 1. LAPISAN LATAR BELAKANG DENGAN GAMBAR BURAM (Menggunakan ::before) */
-            .stApp::before {{
-                content: "";
-                position: fixed; /* Membuatnya tetap di tempat saat scroll */
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
+            .stApp {{
+                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
                 background-image: url("data:image/jpeg;base64,{base64_img}");
                 background-size: cover; 
                 background-attachment: fixed; 
                 background-position: center;
-                
-                /* >>> INI YANG MEMBUAT GAMBAR GEDUNG (LATAR BELAKANG) BURAM <<< */
-                filter: blur(5px); /* Nilai blur: 5px */
-                -webkit-filter: blur(5px); 
-                
-                z-index: -1; /* Pindahkan ke belakang semua elemen Streamlit */
+                /* TAMBAHKAN FILTER BLUR HANYA PADA BACKGROUND IMAGE */
+                /* Karena Streamlit menempatkan gambar sebagai background di .stApp, 
+                   kita akan menggunakan backdrop-filter pada konten di depannya. */
             }}
-
-            /* 2. Sidebar dengan latar belakang semi-transparan (tidak blur) */
+            
+            /* 1. Sidebar Semi-Transparan */
             [data-testid="stSidebar"] {{
                 background-color: rgba(255, 255, 255, 0.8); 
                 border-right: 1px solid #ccc;
             }}
 
-            /* 3. Konten utama (kotak dashboard/block-container) dengan latar belakang semi-transparan */
-            /* Ini menargetkan kontainer yang memuat semua widget. */
-            .main .block-container {{
-                background-color: rgba(255, 255, 255, 0.9); /* Latar konten semi transparan */
-                border-radius: 10px; 
+            /* 2. AREA KONTEN UTAMA DIBUAT BURAM MENGGUNAKAN BACKDROP-FILTER */
+            /* Ini akan membuat latar belakang (gambar) yang terlihat melalui kotak 
+               konten menjadi buram, sementara konten (teks, dll.) di dalamnya tetap tajam. */
+            /* stVerticalBlock adalah container utama untuk konten dashboard (kotak putih di tengah) */
+            [data-testid="stVerticalBlock"] {{
+                /* Latar belakang semi-transparan */
+                background-color: rgba(255, 255, 255, 0.7); 
+                
+                /* EFEK BURAM PADA LATAR BELAKANG YANG TERLIHAT DI BELAKANG ELEMEN INI */
+                backdrop-filter: blur(5px); 
+                -webkit-backdrop-filter: blur(5px); /* Untuk Safari */
+                
                 padding: 10px 20px 20px 20px; 
+                border-radius: 10px; 
             }}
             
-            /* 4. Teks Berbayangan agar tetap terbaca di atas buram */
-            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir, label, button, .st-df, .st-ck {{
+            /* 3. Teks Berbayangan agar tetap terbaca di atas buram (Opsional, tapi bagus) */
+            h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
                 color: #333333; 
                 text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
             }}
@@ -291,6 +296,7 @@ st.set_page_config(layout="wide", page_title="Dashboard Parkir Barcode")
 
 # -----------------------------------------------------------------------------
 # >>> PEMANGGILAN FUNGSI LATAR BELAKANG DITAMBAHKAN DI SINI <<<
+# Pastikan file 'BG-FASILKOM.jpeg' ada di direktori yang sama!
 set_background('BG-FASILKOM.jpeg') 
 # -----------------------------------------------------------------------------
 
@@ -323,7 +329,7 @@ if 'admin_table_filter' not in st.session_state:
 st.sidebar.title("Menu Aplikasi")
 
 if st.session_state.app_mode == 'gate_monitor':
-    st.sidebar.markdown("*Monitor Sedang Aktif*")
+    st.sidebar.markdown("**Monitor Sedang Aktif**")
     if st.sidebar.button("Kembali ke Dashboard Admin"):
         st.session_state.app_mode = 'admin_dashboard'
         st.rerun()
@@ -351,7 +357,7 @@ elif st.session_state.app_mode not in ['login', 'register']:
         st.rerun()    
 
 if st.session_state.app_mode != 'gate_monitor':
-    st.title("🅿 Dashboard Parkir")
+    st.title("🅿️ Dashboard Parkir")
     st.markdown("---")
 
 # =================================================================
@@ -471,3 +477,281 @@ elif st.session_state.app_mode == 'register':
         if submitted:
             if name and user_id and password and license_plate:
                 if user_id in st.session_state.data['user_id'].values:
+                    st.error("NIM/NIP ini sudah terdaftar. Silakan Login.")
+                else:
+                    new_barcode_id = str(uuid.uuid4())
+                    
+                    hashed_password = hash_password(password)
+                    
+                    new_data = {
+                        'barcode_id': new_barcode_id,
+                        'name': name,
+                        'user_id': user_id,
+                        'password': hashed_password, 
+                        'vehicle_type': vehicle_type,
+                        'license_plate': license_plate,
+                        'status': 'OUT',
+                        'time_in': pd.NaT,
+                        'time_out': pd.NaT,
+                        'duration': ''
+                    }
+                    st.session_state.data.loc[new_barcode_id] = new_data
+                    save_data(st.session_state.data, DATA_FILE)
+                    
+                    st.success("Pendaftaran berhasil! Silakan Login.")
+                    st.session_state.app_mode = 'login' 
+                    st.rerun() 
+            else:
+                st.error("Semua kolom harus diisi!")
+
+
+elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_role == 'user':
+    user_id = st.session_state.logged_in_user_id
+    if user_id not in st.session_state.data.index:
+        st.error("Data pengguna tidak ditemukan. Silakan login ulang.")
+        st.session_state.app_mode = 'login'
+        st.rerun()
+    
+    user_data = st.session_state.data.loc[user_id]
+    
+    st.header(f"Selamat Datang di Dashboard Anda, {user_data['name']}!")
+    
+    col_info, col_qr = st.columns([1, 1])
+    
+    with col_info:
+        st.subheader("Identitas dan Data Kendaraan")
+        st.markdown(f"**Nama Lengkap:** {user_data['name']}")
+        st.markdown(f"**NIM/NIP:** {user_data['user_id']}")
+        st.markdown(f"**Jenis Kendaraan:** {user_data['vehicle_type']}")
+        st.markdown(f"**Nomor Polisi:** {user_data['license_plate']}")
+        st.markdown(f"**Status Parkir Saat Ini:** **{user_data['status']}**")
+        
+        st.markdown("---")
+        st.subheader("Informasi Waktu")
+        
+        if pd.notna(user_data['time_in']):
+            # Pastikan kolom adalah datetime sebelum memanggil strftime
+            time_in_dt = pd.to_datetime(user_data['time_in'])
+            st.markdown(f"**Waktu Masuk:** {time_in_dt.strftime('%d %b %Y, %H:%M:%S')}")
+        else:
+            st.markdown(f"**Waktu Masuk:** Belum ada data masuk.")
+            
+        if user_data['status'] == 'OUT' and pd.notna(user_data['time_out']):
+            # Pastikan kolom adalah datetime sebelum memanggil strftime
+            time_out_dt = pd.to_datetime(user_data['time_out'])
+            st.markdown(f"**Waktu Keluar:** {time_out_dt.strftime('%d %b %Y, %H:%M:%S')}")
+            st.success(f"**Durasi Parkir:** {user_data['duration']}")
+
+    with col_qr:
+        st.subheader("Barcode Akses Parkir (Kunci Gerbang)")
+        st.info("Tunjukkan Barcode ini ke scanner di gerbang untuk masuk/keluar.")
+        
+        qr_buffer = generate_qr_code(user_id)
+        st.image(qr_buffer, caption=f"ID: {user_id[:8]}...", width=250)
+        
+        st.download_button(
+            label="Download Barcode (PNG)",
+            data=qr_buffer,
+            file_name=f"{user_data['name']}_parkir.png",
+            mime="image/png"
+        )
+
+
+# ----------------- DASHBOARD ADMIN/PETUGAS -----------------
+elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_role == 'admin':
+    st.header("Dashboard Petugas Parkir (Akses Admin)")
+    
+    col_input, col_stats = st.columns([6, 2])
+
+    with col_input:
+        st.subheader("Kontrol Scanner Gerbang")
+        
+        feedback_placeholder = st.empty()
+        
+        tab_text, tab_file, tab_camera = st.tabs(["Input Teks ID", "Unggah Barcode Gambar", "Ambil Foto Barcode (Kamera)"])
+
+        with tab_text:
+            scan_id_text = st.text_input("Masukkan Barcode ID Manual:", key="admin_scan_id_text").strip()
+            if st.button("PROSES DENGAN TEKS"):
+                # Panggil process_scan, lalu paksa transisi mode dan rerun
+                process_scan(scan_id_text, feedback_placeholder)
+                st.session_state.app_mode = 'gate_monitor' 
+                st.rerun() 
+                
+
+        with tab_file:
+            uploaded_file = st.file_uploader("Unggah Gambar Barcode/QR Code (.png, .jpg)", type=['png', 'jpg', 'jpeg'])
+            if uploaded_file is not None:
+                # Simulasi deteksi ID dari nama file (Harus diganti dengan OCR/deteksi Barcode)
+                simulated_id = uploaded_file.name.split('.')[0] 
+                st.info(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id}** (berdasarkan nama file).")
+                if st.button("PROSES DENGAN GAMBAR"):
+                    # Panggil process_scan, lalu paksa transisi mode dan rerun
+                    process_scan(simulated_id, feedback_placeholder)
+                    st.session_state.app_mode = 'gate_monitor' 
+                    st.rerun()
+                    
+
+        with tab_camera:
+            camera_image = st.camera_input("Arahkan Kamera ke Barcode", help="Fitur ini menggunakan kamera perangkat Anda. Pastikan Barcode terlihat jelas.")
+            if camera_image is not None:
+                # Menggunakan ID simulasi. Ganti dengan logika deteksi barcode jika ada.
+                simulated_id_cam = "simulasi1234" 
+                st.image(camera_image, caption="Foto Barcode yang diambil", use_column_width=True)
+                st.warning(f"Simulasi: ID Barcode yang terdeteksi adalah **{simulated_id_cam}**.")
+                if st.button("PROSES DENGAN FOTO"):
+                    # Panggil process_scan, lalu paksa transisi mode dan rerun
+                    process_scan(simulated_id_cam, feedback_placeholder)
+                    st.session_state.app_mode = 'gate_monitor' 
+                    st.rerun()
+
+
+    # Statistik Dashboard
+    with col_stats:
+        st.subheader("Ringkasan Status")
+        total_users = len(st.session_state.data)
+        parked_count = len(st.session_state.data[st.session_state.data['status'] == 'IN'])
+        out_count = total_users - parked_count
+
+        st.metric(label="Total Pengguna Terdaftar", value=total_users)
+        st.metric(label="Sedang Parkir (IN)", value=parked_count)
+        st.metric(label="Sudah Keluar (OUT)", value=out_count)
+
+    if feedback_placeholder.empty:
+        feedback_placeholder.markdown("Siap untuk *scan* berikutnya...", unsafe_allow_html=True)
+            
+    st.markdown("---") 
+    
+    # Tabel Status Parkir & Hapus Akun
+    st.subheader("Tabel Status Parkir Saat Ini")
+    
+    def set_filter(status):
+        st.session_state.admin_table_filter = status
+    
+    col_filter_all, col_filter_in, col_filter_out, col_spacer = st.columns([2, 2, 2, 5])
+    with col_filter_all:
+        if st.button("🌎 Semua", key="filter_all"):
+            set_filter('ALL')
+    with col_filter_in:
+        if st.button("🚗 Masuk", key="filter_in"):
+            set_filter('IN')
+    with col_filter_out:
+        if st.button("🚪 Keluar", key="filter_out"):
+            set_filter('OUT')
+    
+    df_filtered_table = st.session_state.data.copy()
+    if st.session_state.admin_table_filter == 'IN':
+        df_filtered_table = df_filtered_table[df_filtered_table['status'] == 'IN']
+        st.info("Filter Aktif: Hanya menampilkan yang sedang **Masuk (IN)**.")
+    elif st.session_state.admin_table_filter == 'OUT':
+        df_filtered_table = df_filtered_table[df_filtered_table['status'] == 'OUT']
+        st.info("Filter Aktif: Hanya menampilkan yang sudah **Keluar (OUT)**.")
+    else:
+        st.info("Filter Aktif: Menampilkan **Semua** data pengguna.")
+        
+    display_data = df_filtered_table[['barcode_id', 'name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
+    
+    # Format ulang tanggal/waktu agar mudah dibaca di tabel
+    display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
+    display_data['time_out'] = pd.to_datetime(display_data['time_out'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
+
+    def color_status(val):
+        color = 'lightgreen' if val == 'IN' else 'salmon'
+        return f'background-color: {color}'
+
+    st.dataframe(
+        display_data.style.applymap(color_status, subset=['status']),
+        use_container_width=True
+    )
+    
+    
+    st.markdown("---")
+    
+    
+    # LOGIKA PENGHAPUSAN AKUN OLEH ADMIN
+    st.subheader("Opsi Admin: Hapus Akun Pengguna")
+    
+    user_list = [name for name in st.session_state.data['name'].tolist() if name.lower() != ADMIN_USER.lower()]
+    user_to_delete_name = st.selectbox("Pilih Pengguna yang akan dihapus:", [''] + user_list, key="delete_user_select")
+    
+    delete_button = st.button("Hapus Akun Pengguna Terpilih", disabled=(user_to_delete_name == ''))
+    
+    if delete_button and user_to_delete_name:
+        try:
+            user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
+            barcode_id_to_delete = user_rows.index.tolist()
+            
+            st.session_state.data.drop(index=barcode_id_to_delete, inplace=True)
+            save_data(st.session_state.data, DATA_FILE)
+
+            st.session_state.log = st.session_state.log[~st.session_state.log['barcode_id'].isin(barcode_id_to_delete)]
+            save_data(st.session_state.log, LOG_FILE)
+            
+            st.success(f"Akun pengguna {user_to_delete_name} (dan {len(barcode_id_to_delete)} data terkait) berhasil dihapus.")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Terjadi masalah saat penghapusan: {e}")
+
+
+# ----------------- ADMIN RESET PASSWORD -----------------
+elif st.session_state.app_mode == 'admin_reset_password' and st.session_state.user_role == 'admin':
+    
+    st.header("🛠️ Reset Password & Migrasi Data Pengguna (Akses Admin)")
+    st.markdown("---")
+
+    st.subheader("1. Reset Password Pengguna Individual")
+    
+    user_list_reset = st.session_state.data['name'].tolist()
+    user_to_reset_name = st.selectbox(
+        "Pilih Pengguna untuk Reset Password:", 
+        [''] + sorted([name for name in user_list_reset if name.lower() != ADMIN_USER.lower()]), 
+        key="reset_user_select"
+    )
+
+    if user_to_reset_name:
+        with st.form("reset_password_form", clear_on_submit=True):
+            st.info(f"Anda akan mereset password untuk **{user_to_reset_name}**.")
+            
+            new_pass_admin = st.text_input(
+                "Masukkan Password BARU", 
+                type="password", 
+                key="new_pass_admin_input"
+            ).strip()
+            
+            confirm_pass_admin = st.text_input(
+                "Konfirmasi Password BARU", 
+                type="password", 
+                key="confirm_pass_admin_input"
+            ).strip()
+            
+            reset_button = st.form_submit_button("Lakukan Reset Password")
+
+            if reset_button:
+                if not new_pass_admin or not confirm_pass_admin:
+                    st.error("Semua kolom password harus diisi.")
+                elif new_pass_admin != confirm_pass_admin:
+                    st.error("Password baru dan konfirmasi tidak cocok!")
+                else:
+                    try:
+                        user_rows_to_update = st.session_state.data[
+                            st.session_state.data['name'] == user_to_reset_name
+                        ]
+                        
+                        if not user_rows_to_update.empty:
+                            barcode_id_to_update = user_rows_to_update.index[0]
+                            
+                            hashed_password_new = hash_password(new_pass_admin)
+                            
+                            st.session_state.data.loc[barcode_id_to_update, 'password'] = hashed_password_new
+                            
+                            save_data(st.session_state.data, DATA_FILE)
+                            
+                            st.success(f"✅ Password untuk **{user_to_reset_name}** berhasil direset!")
+                            st.warning("Penting: Berikan password baru ini kepada pengguna dan sarankan mereka untuk login dan menggantinya.")
+                            st.rerun() 
+                        else:
+                            st.error("Pengguna tidak ditemukan dalam database.")
+
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan saat mereset password: {e}")
