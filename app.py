@@ -244,6 +244,10 @@ if 'monitor_type' not in st.session_state:
 if 'monitor_display_time' not in st.session_state:
     # Set waktu lampau agar langsung tampil default
     st.session_state.monitor_display_time = datetime.now() - timedelta(seconds=MONITOR_TIMEOUT_SECONDS + 1)
+    
+# --- INISIALISASI FILTER TABLE ADMIN ---
+if 'admin_table_filter' not in st.session_state:
+    st.session_state.admin_table_filter = 'ALL' # Default: ALL (Semua)
 # -------------------------------------------
 
 # Tombol Logout dan Menu Admin/Monitor
@@ -544,8 +548,39 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     
     # Tabel Status Parkir & Hapus Akun
     st.subheader("Tabel Status Parkir Saat Ini")
+    
+    # --- BARU: FILTER TABEL DENGAN TOMBOL KECIL ---
+    col_filter_all, col_filter_in, col_filter_out, col_spacer = st.columns([1, 1, 1, 5])
+    
+    # Fungsi untuk mengubah filter
+    def set_filter(status):
+        st.session_state.admin_table_filter = status
+    
+    with col_filter_all:
+        if st.button("🌎 Semua", key="filter_all", help="Tampilkan semua pengguna (Masuk dan Keluar)"):
+            set_filter('ALL')
+    
+    with col_filter_in:
+        if st.button("🚗 Masuk", key="filter_in", help="Hanya tampilkan pengguna yang sedang parkir (Status: IN)"):
+            set_filter('IN')
+            
+    with col_filter_out:
+        if st.button("🚪 Keluar", key="filter_out", help="Hanya tampilkan pengguna yang sudah keluar (Status: OUT)"):
+            set_filter('OUT')
+    
+    # Terapkan Filter
+    df_filtered_table = st.session_state.data.copy()
+    if st.session_state.admin_table_filter == 'IN':
+        df_filtered_table = df_filtered_table[df_filtered_table['status'] == 'IN']
+        st.info("Filter Aktif: Hanya menampilkan yang sedang **Masuk (IN)**.")
+    elif st.session_state.admin_table_filter == 'OUT':
+        df_filtered_table = df_filtered_table[df_filtered_table['status'] == 'OUT']
+        st.info("Filter Aktif: Hanya menampilkan yang sudah **Keluar (OUT)**.")
+    else:
+        st.info("Filter Aktif: Menampilkan **Semua** data pengguna.")
+        
     # Buat copy data untuk ditampilkan
-    display_data = st.session_state.data[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
+    display_data = df_filtered_table[['name', 'user_id', 'license_plate', 'status', 'time_in', 'time_out', 'duration']].copy()
     
     # Format kolom waktu
     display_data['time_in'] = pd.to_datetime(display_data['time_in'], errors='coerce').dt.strftime('%H:%M:%S, %d/%m').fillna('-')
@@ -559,18 +594,8 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
         display_data.style.applymap(color_status, subset=['status']),
         use_container_width=True
     )
+    # --- AKHIR: FILTER TABEL DENGAN TOMBOL KECIL ---
     
-    # =================================================================
-    # OPSI ADMIN: MIGRASI PASSWORD LAMA (Telah dipindahkan)
-    # =================================================================
-    # Hapus bagian ini
-    # st.markdown("---")
-    # st.subheader("⚠️ Migrasi Data Password Lama (Lakukan Sekali!)")
-    # st.info("Gunakan ini jika pengguna lama tidak bisa login. Ini akan mengamankan password mereka dengan Bcrypt.")
-    # if st.button("Konversi Semua Password Lama ke Format Bcrypt"):
-    #     ... (Logika migrasi lama)
-    # -----------------------------------------------------------------
-
     st.markdown("---")
     
     
