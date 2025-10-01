@@ -53,40 +53,54 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def set_background(image_path):
-    """Menyuntikkan CSS untuk mengatur gambar latar belakang menggunakan Base64."""
+    """Menyuntikkan CSS untuk mengatur gambar latar belakang, termasuk efek blur."""
     
     base64_img = get_base64_of_bin_file(image_path)
     
-    # Perbaikan: Cek 'is not None' untuk menghindari NameError jika gagal membaca file
     if base64_img is not None:
         st.markdown(
             f"""
             <style>
-            .stApp {{
-                /* Menggunakan data:image/jpeg;base64 untuk gambar yang tertanam */
+            
+            /* 1. CONTAINER BACKGROUND BLUR (LAPISAN BARU) */
+            /* Ini akan meletakkan gambar blur di belakang semua konten Streamlit */
+            .stApp::before {{
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
                 background-image: url("data:image/jpeg;base64,{base64_img}");
                 background-size: cover; 
                 background-attachment: fixed; 
                 background-position: center;
+                
+                /* >>> PROPERTI BLUR SEBENARNYA (UBUR DISINI) <<< */
+                filter: blur(5px); /* Semakin besar, semakin blur */
+                
+                z-index: -1; /* Pindahkan ke belakang semua elemen Streamlit */
             }}
-            /* 1. Sidebar Transparan (Opacity 80%) */
+
+            /* 2. Sidebar Transparan */
             [data-testid="stSidebar"] {{
-                background-color: rgba(255, 255, 255, 0.8); 
+                /* background-color: rgba(255, 255, 255, 0.8); sudah ada di kode Anda */
+                background-color: rgba(255, 255, 255, 0.8); 
                 border-right: 1px solid #ccc;
             }}
 
-            /* 2. AREA KONTEN UTAMA DIBUAT BURAM (Opacity 90%) */
-            /* stVerticalBlock adalah container utama untuk konten dashboard */
+            /* 3. AREA KONTEN UTAMA DIBUAT BURAM */
             [data-testid="stVerticalBlock"] {{
+                /* background-color: rgba(255, 255, 255, 0.9); sudah ada di kode Anda */
                 background-color: rgba(255, 255, 255, 0.9);
-                padding: 10px 20px 20px 20px; 
-                border-radius: 10px; 
+                padding: 10px 20px 20px 20px; 
+                border-radius: 10px; 
             }}
             
-            /* 3. Teks Berbayangan agar tetap terbaca di atas gambar/kontainer buram */
+            /* 4. Teks Berbayangan agar tetap terbaca */
             h1, h2, h3, p, .stMarkdown, .css-1d3f9b, .css-1dp5vir {{
-                color: #333333; 
-                text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
+                color: #333333; 
+                text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); 
             }}
             </style>
             """,
@@ -862,5 +876,6 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
