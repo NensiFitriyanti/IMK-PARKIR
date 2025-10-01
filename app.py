@@ -839,29 +839,58 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     
     st.markdown("---")
     
-    # GRAFIK 3: Status Parkir Berdasarkan Jenis Kendaraan
-    st.subheader("Grafik 3: Status Parkir Berdasarkan Jenis Kendaraan (Saat Ini)")
+    # # GRAFIK 3: Status Parkir Berdasarkan Jenis Kendaraan
+    # st.subheader("Grafik 3: Status Parkir Berdasarkan Jenis Kendaraan (Saat Ini)")
     
-    df_status = st.session_state.data.copy()
-    df_status_counts = df_status.groupby(['vehicle_type', 'status']).size().reset_index(name='count')
+    # df_status = st.session_state.data.copy()
+    # df_status_counts = df_status.groupby(['vehicle_type', 'status']).size().reset_index(name='count')
 
-    if not df_status_counts.empty:
-        chart3 = alt.Chart(df_status_counts).mark_bar().encode(
-            x=alt.X('vehicle_type:N', title='Jenis Kendaraan'),
-            y=alt.Y('count:Q', title='Jumlah Kendaraan'),
-            color=alt.Color('status:N', title='Status', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])),
-            column=alt.Column('status:N', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
-            tooltip=['vehicle_type', 'status', 'count']
-        ).properties(
-            title='Status Parkir Saat Ini'
-            width=400,   # atur lebar grafik
-            height=300   # atur tinggi grafik
-        ).interactive()
-        st.altair_chart(chart3, use_container_width=False)
-    else:
-        st.info("Tidak ada data status parkir.")
+    # if not df_status_counts.empty:
+    #     chart3 = alt.Chart(df_status_counts).mark_bar().encode(
+    #         x=alt.X('vehicle_type:N', title='Jenis Kendaraan'),
+    #         y=alt.Y('count:Q', title='Jumlah Kendaraan'),
+    #         color=alt.Color('status:N', title='Status', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])),
+    #         column=alt.Column('status:N', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+    #         tooltip=['vehicle_type', 'status', 'count']
+    #     ).properties(
+    #         title='Status Parkir Saat Ini'
+    #         width=400,   # atur lebar grafik
+    #         height=300   # atur tinggi grafik
+    #     ).interactive()
+    #     st.altair_chart(chart3, use_container_width=False)
+    # else:
+    #     st.info("Tidak ada data status parkir.")
 
-    st.markdown("---")
-    st.subheader("Tabel Log Transaksi Terakhir")
-    st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+    # st.markdown("---")
+    # st.subheader("Tabel Log Transaksi Terakhir")
+    # st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
+# GRAFIK 3: Status Parkir Berdasarkan Jenis Kendaraan
+st.subheader("Grafik 3: Status Parkir Berdasarkan Jenis Kendaraan (Saat Ini)")
+
+df_status = st.session_state.data.copy()
+df_status_counts = df_status.groupby(['vehicle_type', 'status']).size().reset_index(name='count')
+
+if not df_status_counts.empty:
+    chart3 = alt.Chart(df_status_counts).mark_bar().encode(
+        x=alt.X('vehicle_type:N', title='Jenis Kendaraan'),
+        y=alt.Y('count:Q', title='Jumlah Kendaraan'),
+        color=alt.Color('status:N', title='Status', scale=alt.Scale(domain=['IN', 'OUT'], range=['#4CAF50', '#F44336'])),
+        column=alt.Column('status:N', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+        tooltip=['vehicle_type', 'status', 'count']
+    ).properties(
+        title='Status Parkir Saat Ini',
+        width=250,   # atur lebar chart per kolom
+        height=300   # atur tinggi chart
+    ).interactive()
+    st.altair_chart(chart3, use_container_width=True)
+else:
+    st.info("Tidak ada data status parkir.")
+
+st.markdown("---")
+st.subheader("Tabel Log Transaksi Terakhir")
+st.dataframe(
+    df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False),
+    use_container_width=True
+)
 
