@@ -612,7 +612,7 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     def set_filter(status):
         st.session_state.admin_table_filter = status
     
-    col_filter_all, col_filter_in, col_filter_out, col_spacer = st.columns([2, 2, 2, 5])
+    col_filter_all, col_filter_in, col_filter_out, col_spacer = st.columns([2, 2, 2, ])
     with col_filter_all:
         if st.button("🌎 Semua", key="filter_all"):
             set_filter('ALL')
@@ -862,4 +862,5 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
