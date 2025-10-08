@@ -624,21 +624,20 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     #         set_filter('OUT')
 
   
-# Judul di tengah
+# Tabel Status Parkir & Hapus Akun
 st.markdown(
     "<h3 style='text-align: center;'>Tabel Status Parkir Saat Ini</h3>",
     unsafe_allow_html=True
 )
 
-# Fungsi set filter
 def set_filter(status):
     st.session_state.admin_table_filter = status
 
-# Buat kolom spacer kiri - tengah (tombol) - spacer kanan
-col_spacer_left, col_center, col_spacer_right = st.columns([1, 4, 1])
+# Buat kolom spacer kiri - tombol - spacer kanan untuk menengahkan
+col_spacer_left, col_filter_area, col_spacer_right = st.columns([1, 4, 1])
 
-with col_center:
-    col_filter_all, col_filter_in, col_filter_out = st.columns(3)
+with col_filter_area:
+    col_filter_all, col_filter_in, col_filter_out = st.columns([1, 1, 1])
     with col_filter_all:
         if st.button("🌎 Semua", key="filter_all"):
             set_filter('ALL')
@@ -648,6 +647,7 @@ with col_center:
     with col_filter_out:
         if st.button("🚪 Keluar", key="filter_out"):
             set_filter('OUT')
+
 
     df_filtered_table = st.session_state.data.copy()
     if st.session_state.admin_table_filter == 'IN':
@@ -888,6 +888,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
