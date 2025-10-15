@@ -761,37 +761,37 @@ if st.session_state.app_mode not in ['login', 'register']:
 #     if st.button("🆕 Daftar Akun Baru", use_container_width=True):
 #         st.session_state.app_mode = 'register'
 #         st.rerun()
+
 # --------------------------------------------------------------
-# HALAMAN LOGIN (Kecil, Tengah, Rapi)
+# HALAMAN LOGIN (Tampilan kecil dan di tengah)
 # --------------------------------------------------------------
 if st.session_state.app_mode == 'login':
-    # CSS agar form tampak kecil dan di tengah
+    # Tambahkan CSS untuk memperkecil dan memusatkan tampilan
     st.markdown("""
         <style>
-        .centered-box {
-            max-width: 350px; /* ukuran kecil */
-            margin: 80px auto; /* biar ke tengah vertikal */
-            padding: 30px 35px;
-            background-color: #ffffffcc;
-            border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        .login-box {
+            max-width: 320px;  /* Lebar kotak login */
+            margin: 80px auto; /* Tengah horizontal + jarak atas */
+            padding: 25px 30px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             text-align: center;
         }
-        .centered-box h1 {
-            font-size: 1.4rem;
-            margin-bottom: 0.3rem;
+        .login-box h1 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
         }
-        .centered-box h3 {
-            font-size: 1rem;
-            font-weight: normal;
-            color: #444;
-            margin-bottom: 1.5rem;
+        .login-box h3 {
+            font-size: 0.95rem;
+            color: #555;
+            margin-bottom: 1.2rem;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    # Bungkus isi login ke dalam box
-    st.markdown("<div class='centered-box'>", unsafe_allow_html=True)
+    # Bungkus tampilan login ke dalam kotak kecil
+    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
     st.markdown("## 🅿️ Aplikasi Parkir Barcode")
     st.markdown("#### Selamat Datang! Silakan Login")
@@ -802,12 +802,13 @@ if st.session_state.app_mode == 'login':
         submit = st.form_submit_button("Login")
 
         if submit:
-            # Admin
+            # Login Admin
             if username == ADMIN_USER and password == ADMIN_PASS:
                 st.session_state.app_mode = 'admin_dashboard'
                 st.session_state.user_role = 'admin'
                 st.success("Login sebagai Admin berhasil!")
                 st.rerun()
+            # Login Pengguna
             else:
                 df = st.session_state.data
                 match = df[df['name'].str.lower() == username.lower()]
@@ -826,13 +827,11 @@ if st.session_state.app_mode == 'login':
 
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("<div style='text-align:center;'>Belum punya akun?</div>", unsafe_allow_html=True)
-
     if st.button("🆕 Daftar Akun Baru", use_container_width=True):
         st.session_state.app_mode = 'register'
         st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 
 # --------------------------------------------------------------
@@ -1244,6 +1243,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
