@@ -417,16 +417,14 @@ elif st.session_state.app_mode == 'login':
                     st.session_state.user_role = 'admin'
                     st.success("Login sebagai Petugas/Admin berhasil!")
                     st.rerun()
-
-                # 2. Cek login Pengguna Biasa
+                  # 2. Cek login Pengguna Biasa
                 else:
                     found_user = st.session_state.data[
                         st.session_state.data['name'].str.lower() == login_name_or_admin.lower()
                     ]
-
+                
                     if not found_user.empty:
                         first_match = found_user.iloc[0]
-
                         stored_password_clean = str(first_match['password']).strip()
                         
                         if stored_password_clean and check_password(login_pass, stored_password_clean):
@@ -439,12 +437,49 @@ elif st.session_state.app_mode == 'login':
                             st.error("Password salah!") 
                     else:
                         st.error("Nama Lengkap tidak terdaftar!")
+                
+                # ==========================
+                # Tombol Daftar Akun Baru di bawah dan tengah
+                # ==========================
+                
+                st.markdown("<br>", unsafe_allow_html=True)  # beri sedikit jarak dari form login
+                
+                # Buat 3 kolom agar tombol di tengah
+                col1, col2, col3 = st.columns([1, 2, 1])
+                with col2:
+                    daftar_clicked = st.button("Daftar Akun Baru (Register)", use_container_width=True)
+                    if daftar_clicked:
+                        st.session_state.app_mode = 'register'
+                        st.rerun()
+  
+
+    #             # 2. Cek login Pengguna Biasa
+    #             else:
+    #                 found_user = st.session_state.data[
+    #                     st.session_state.data['name'].str.lower() == login_name_or_admin.lower()
+    #                 ]
+
+    #                 if not found_user.empty:
+    #                     first_match = found_user.iloc[0]
+
+    #                     stored_password_clean = str(first_match['password']).strip()
+                        
+    #                     if stored_password_clean and check_password(login_pass, stored_password_clean):
+    #                         st.session_state.app_mode = 'user_dashboard'
+    #                         st.session_state.user_role = 'user'
+    #                         st.session_state.logged_in_user_id = first_match['barcode_id'] 
+    #                         st.success(f"Login pengguna {first_match['name']} berhasil!")
+    #                         st.rerun()
+    #                     else:
+    #                         st.error("Password salah!") 
+    #                 else:
+    #                     st.error("Nama Lengkap tidak terdaftar!")
 
 
-    with col_r:
-        if st.button("Daftar Akun Baru (Register)"):
-            st.session_state.app_mode = 'register'
-            st.rerun()
+    # with col_r:
+    #     if st.button("Daftar Akun Baru (Register)"):
+    #         st.session_state.app_mode = 'register'
+    #         st.rerun()
 
 
 
@@ -842,6 +877,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
