@@ -418,113 +418,35 @@ elif st.session_state.app_mode == 'login':
                     st.success("Login sebagai Petugas/Admin berhasil!")
                     st.rerun()
 
-    #             # 2. Cek login Pengguna Biasa
-    #             else:
-    #                 found_user = st.session_state.data[
-    #                     st.session_state.data['name'].str.lower() == login_name_or_admin.lower()
-    #                 ]
-
-    #                 if not found_user.empty:
-    #                     first_match = found_user.iloc[0]
-
-    #                     stored_password_clean = str(first_match['password']).strip()
-                        
-    #                     if stored_password_clean and check_password(login_pass, stored_password_clean):
-    #                         st.session_state.app_mode = 'user_dashboard'
-    #                         st.session_state.user_role = 'user'
-    #                         st.session_state.logged_in_user_id = first_match['barcode_id'] 
-    #                         st.success(f"Login pengguna {first_match['name']} berhasil!")
-    #                         st.rerun()
-    #                     else:
-    #                         st.error("Password salah!") 
-    #                 else:
-    #                     st.error("Nama Lengkap tidak terdaftar!")
-
-
-    # with col_r:
-    #     if st.button("Daftar Akun Baru (Register)"):
-    #         st.session_state.app_mode = 'register'
-    #         st.rerun()
-
-# 2. Cek login Pengguna Biasa
-else:
-    found_user = st.session_state.data[
-        st.session_state.data['name'].str.lower() == login_name_or_admin.lower()
-    ]
-
-    if not found_user.empty:
-        first_match = found_user.iloc[0]
-        stored_password_clean = str(first_match['password']).strip()
-        
-        if stored_password_clean and check_password(login_pass, stored_password_clean):
-            st.session_state.app_mode = 'user_dashboard'
-            st.session_state.user_role = 'user'
-            st.session_state.logged_in_user_id = first_match['barcode_id'] 
-            st.success(f"Login pengguna {first_match['name']} berhasil!")
-            st.rerun()
-        else:
-            st.error("Password salah!") 
-    else:
-        st.error("Nama Lengkap tidak terdaftar!")
-
-
-# -----------------------------
-# Tombol "Daftar Akun Baru" di bawah dan tengah
-# -----------------------------
-st.markdown("<br>", unsafe_allow_html=True)  # beri jarak
-
-col1, col2, col3 = st.columns([1, 2, 1])  # buat 3 kolom untuk posisi tengah
-with col2:
-    if st.button("Daftar Akun Baru (Register)", use_container_width=True):
-        st.session_state.app_mode = 'register'
-        st.rerun()
-
-
-elif st.session_state.app_mode == 'register':
-    st.subheader("Buat Akun Parkir Baru")
-    
-    if st.button("<< Kembali ke Login"):
-        st.session_state.app_mode = 'login'
-        st.rerun()
-        
-    with st.form("register_form"):
-        name = st.text_input("Nama Lengkap", key="reg_name").strip()
-        user_id = st.text_input("NIM/NIP (Ini adalah ID Unik Anda)", key="reg_user_id").strip()
-        password = st.text_input("Buat Password", type="password", key="reg_pass").strip()
-        vehicle_type = st.selectbox("Jenis Kendaraan", ['Motor', 'Mobil'], key="reg_vehicle")
-        license_plate = st.text_input("Nomor Polisi (Nopol)", key="reg_nopol").upper().strip()
-        
-        submitted = st.form_submit_button("Daftar & Buat Barcode Pertama")
-
-        if submitted:
-            if name and user_id and password and license_plate:
-                if user_id in st.session_state.data['user_id'].values:
-                    st.error("NIM/NIP ini sudah terdaftar. Silakan Login.")
+                # 2. Cek login Pengguna Biasa
                 else:
-                    new_barcode_id = str(uuid.uuid4())
-                    
-                    hashed_password = hash_password(password)
-                    
-                    new_data = {
-                        'barcode_id': new_barcode_id,
-                        'name': name,
-                        'user_id': user_id,
-                        'password': hashed_password, 
-                        'vehicle_type': vehicle_type,
-                        'license_plate': license_plate,
-                        'status': 'OUT',
-                        'time_in': pd.NaT,
-                        'time_out': pd.NaT,
-                        'duration': ''
-                    }
-                    st.session_state.data.loc[new_barcode_id] = new_data
-                    save_data(st.session_state.data, DATA_FILE)
-                    
-                    st.success("Pendaftaran berhasil! Silakan Login.")
-                    st.session_state.app_mode = 'login' 
-                    st.rerun() 
-            else:
-                st.error("Semua kolom harus diisi!")
+                    found_user = st.session_state.data[
+                        st.session_state.data['name'].str.lower() == login_name_or_admin.lower()
+                    ]
+
+                    if not found_user.empty:
+                        first_match = found_user.iloc[0]
+
+                        stored_password_clean = str(first_match['password']).strip()
+                        
+                        if stored_password_clean and check_password(login_pass, stored_password_clean):
+                            st.session_state.app_mode = 'user_dashboard'
+                            st.session_state.user_role = 'user'
+                            st.session_state.logged_in_user_id = first_match['barcode_id'] 
+                            st.success(f"Login pengguna {first_match['name']} berhasil!")
+                            st.rerun()
+                        else:
+                            st.error("Password salah!") 
+                    else:
+                        st.error("Nama Lengkap tidak terdaftar!")
+
+
+    with col_r:
+        if st.button("Daftar Akun Baru (Register)"):
+            st.session_state.app_mode = 'register'
+            st.rerun()
+
+
 
 
 elif st.session_state.app_mode == 'user_dashboard' and st.session_state.user_role == 'user':
@@ -694,31 +616,31 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     
     if delete_button and user_to_delete_name:
                 try:
-            user_rows = st.session_state.data[
-                st.session_state.data['name'].str.lower() == user_to_delete_name.lower()
-            ]
-
-            if not user_rows.empty:
-                barcode_to_delete = user_rows.iloc[0]['barcode_id']
-
-                # Hapus dari data utama
-                st.session_state.data = st.session_state.data.drop(barcode_to_delete, errors='ignore')
-                save_data(st.session_state.data, DATA_FILE)
-
-                # Hapus juga semua log terkait pengguna itu
-                st.session_state.log = st.session_state.log[
-                    st.session_state.log['barcode_id'] != barcode_to_delete
-                ]
-                save_data(st.session_state.log, LOG_FILE)
-
-                st.success(f"Akun '{user_to_delete_name}' dan seluruh log-nya telah dihapus.")
-                st.rerun()
-            else:
-                st.warning("Pengguna tidak ditemukan dalam database.")
-        except Exception as e:
-            st.error(f"Gagal menghapus pengguna: {e}")
-
-        # try:
+                    user_rows = st.session_state.data[
+                        st.session_state.data['name'].str.lower() == user_to_delete_name.lower()
+                    ]
+        
+                    if not user_rows.empty:
+                        barcode_to_delete = user_rows.iloc[0]['barcode_id']
+        
+                        # Hapus dari data utama
+                        st.session_state.data = st.session_state.data.drop(barcode_to_delete, errors='ignore')
+                        save_data(st.session_state.data, DATA_FILE)
+        
+                        # Hapus juga semua log terkait pengguna itu
+                        st.session_state.log = st.session_state.log[
+                            st.session_state.log['barcode_id'] != barcode_to_delete
+                        ]
+                        save_data(st.session_state.log, LOG_FILE)
+        
+                        st.success(f"Akun '{user_to_delete_name}' dan seluruh log-nya telah dihapus.")
+                        st.rerun()
+                    else:
+                        st.warning("Pengguna tidak ditemukan dalam database.")
+                except Exception as e:
+                    st.error(f"Gagal menghapus pengguna: {e}")
+        
+                # try:
         #     user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
         #     barcode_id_to_delete = user_rows.index.tolist()
             
@@ -920,6 +842,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
