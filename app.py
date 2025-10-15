@@ -454,7 +454,6 @@ else:
 
     if not found_user.empty:
         first_match = found_user.iloc[0]
-
         stored_password_clean = str(first_match['password']).strip()
         
         if stored_password_clean and check_password(login_pass, stored_password_clean):
@@ -468,35 +467,17 @@ else:
     else:
         st.error("Nama Lengkap tidak terdaftar!")
 
-# ---- Tombol Register di bawah dan tengah ----
-st.markdown("<br>", unsafe_allow_html=True)  # spasi kecil
 
-# Gunakan HTML dan CSS untuk posisi tengah
-st.markdown(
-    """
-    <div style='text-align: center;'>
-        <form action='#' method='post'>
-            <button style='background-color: #0099ff;
-                           color: white;
-                           border: none;
-                           border-radius: 8px;
-                           padding: 10px 20px;
-                           font-size: 16px;
-                           cursor: pointer;'>
-                Daftar Akun Baru (Register)
-            </button>
-        </form>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# -----------------------------
+# Tombol "Daftar Akun Baru" di bawah dan tengah
+# -----------------------------
+st.markdown("<br>", unsafe_allow_html=True)  # beri jarak
 
-# Tangani tombol register (versi Streamlit murni)
-register_clicked = st.button(" ", key="register_hidden", label_visibility="collapsed")
-if register_clicked:
-    st.session_state.app_mode = 'register'
-    st.rerun()
-
+col1, col2, col3 = st.columns([1, 2, 1])  # buat 3 kolom untuk posisi tengah
+with col2:
+    if st.button("Daftar Akun Baru (Register)", use_container_width=True):
+        st.session_state.app_mode = 'register'
+        st.rerun()
 
 
 elif st.session_state.app_mode == 'register':
@@ -914,6 +895,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
