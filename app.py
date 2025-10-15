@@ -763,37 +763,37 @@ if st.session_state.app_mode not in ['login', 'register']:
 #         st.rerun()
 
 # --------------------------------------------------------------
-# HALAMAN LOGIN (Rapi & Tengah)
+# HALAMAN LOGIN (Kecil & Tengah)
 # --------------------------------------------------------------
 if st.session_state.app_mode == 'login':
-    # CSS untuk menaruh form login di tengah halaman
+    # CSS untuk form login kecil & di tengah layar
     st.markdown("""
         <style>
         .login-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 80vh; /* agar vertikal di tengah */
+            height: 85vh;
         }
         .login-box {
-            background-color: rgba(255, 255, 255, 0.85);
-            padding: 40px 50px;
-            border-radius: 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 25px 35px;
+            border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             width: 100%;
-            max-width: 400px;
+            max-width: 360px; /* ukuran frame login */
             text-align: center;
         }
         </style>
         <div class="login-container">
             <div class="login-box">
-                <h1>🅿️ Aplikasi Parkir Barcode</h1>
-                <h4>Selamat Datang! Silakan Login</h4>
+                <h2>🅿️ Aplikasi Parkir Barcode</h2>
+                <h5>Silakan Login</h5>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # Buat form login di tengah
+    # Form login kecil di tengah
     with st.container():
         st.markdown("<div class='login-container'><div class='login-box'>", unsafe_allow_html=True)
 
@@ -833,6 +833,7 @@ if st.session_state.app_mode == 'login':
             st.rerun()
 
         st.markdown("</div></div>", unsafe_allow_html=True)
+
 
 # --------------------------------------------------------------
 # HALAMAN REGISTER
@@ -1243,6 +1244,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
