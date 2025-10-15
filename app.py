@@ -693,21 +693,46 @@ elif st.session_state.app_mode == 'admin_dashboard' and st.session_state.user_ro
     delete_button = st.button("Hapus Akun Pengguna Terpilih", disabled=(user_to_delete_name == ''))
     
     if delete_button and user_to_delete_name:
-        try:
-            user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
-            barcode_id_to_delete = user_rows.index.tolist()
-            
-            st.session_state.data.drop(index=barcode_id_to_delete, inplace=True)
-            save_data(st.session_state.data, DATA_FILE)
+                try:
+            user_rows = st.session_state.data[
+                st.session_state.data['name'].str.lower() == user_to_delete_name.lower()
+            ]
 
-            st.session_state.log = st.session_state.log[~st.session_state.log['barcode_id'].isin(barcode_id_to_delete)]
-            save_data(st.session_state.log, LOG_FILE)
-            
-            st.success(f"Akun pengguna {user_to_delete_name} (dan {len(barcode_id_to_delete)} data terkait) berhasil dihapus.")
-            st.rerun()
-            
+            if not user_rows.empty:
+                barcode_to_delete = user_rows.iloc[0]['barcode_id']
+
+                # Hapus dari data utama
+                st.session_state.data = st.session_state.data.drop(barcode_to_delete, errors='ignore')
+                save_data(st.session_state.data, DATA_FILE)
+
+                # Hapus juga semua log terkait pengguna itu
+                st.session_state.log = st.session_state.log[
+                    st.session_state.log['barcode_id'] != barcode_to_delete
+                ]
+                save_data(st.session_state.log, LOG_FILE)
+
+                st.success(f"Akun '{user_to_delete_name}' dan seluruh log-nya telah dihapus.")
+                st.rerun()
+            else:
+                st.warning("Pengguna tidak ditemukan dalam database.")
         except Exception as e:
-            st.error(f"Terjadi masalah saat penghapusan: {e}")
+            st.error(f"Gagal menghapus pengguna: {e}")
+
+        # try:
+        #     user_rows = st.session_state.data[st.session_state.data['name'] == user_to_delete_name]
+        #     barcode_id_to_delete = user_rows.index.tolist()
+            
+        #     st.session_state.data.drop(index=barcode_id_to_delete, inplace=True)
+        #     save_data(st.session_state.data, DATA_FILE)
+
+        #     st.session_state.log = st.session_state.log[~st.session_state.log['barcode_id'].isin(barcode_id_to_delete)]
+        #     save_data(st.session_state.log, LOG_FILE)
+            
+        #     st.success(f"Akun pengguna {user_to_delete_name} (dan {len(barcode_id_to_delete)} data terkait) berhasil dihapus.")
+        #     st.rerun()
+            
+        # except Exception as e:
+        #     st.error(f"Terjadi masalah saat penghapusan: {e}")
 
 
 # ----------------- ADMIN RESET PASSWORD -----------------
@@ -895,6 +920,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
