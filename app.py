@@ -676,106 +676,49 @@ if st.session_state.app_mode not in ['login', 'register']:
         st.session_state.logged_in_user_id = None
         st.rerun()
 
-# # --------------------------------------------------------------
-# # HALAMAN LOGIN
-# # --------------------------------------------------------------
-# if st.session_state.app_mode == 'login':
-#     st.title("🅿️ Aplikasi Parkir Barcode")
-#     st.subheader("Selamat Datang! Silakan Login")
-
-#     col1, col2 = st.columns([2, 1])
-#     with col1:
-#         with st.form("login_form"):
-#             username = st.text_input("Nama Lengkap (atau 'petugas')").strip()
-#             password = st.text_input("Password", type="password")
-#             submit = st.form_submit_button("Login")
-
-#             if submit:
-#                 # Admin
-#                 if username == ADMIN_USER and password == ADMIN_PASS:
-#                     st.session_state.app_mode = 'admin_dashboard'
-#                     st.session_state.user_role = 'admin'
-#                     st.success("Login sebagai Admin berhasil!")
-#                     st.rerun()
-#                 # Pengguna biasa
-#                 else:
-#                     df = st.session_state.data
-#                     match = df[df['name'].str.lower() == username.lower()]
-#                     if not match.empty:
-#                         user = match.iloc[0]
-#                         if check_password(password, str(user['password'])):
-#                             st.session_state.app_mode = 'user_dashboard'
-#                             st.session_state.user_role = 'user'
-#                             st.session_state.logged_in_user_id = user['barcode_id']
-#                             st.success("Login pengguna berhasil!")
-#                             st.rerun()
-#                         else:
-#                             st.error("Password salah!")
-#                     else:
-#                         st.error("Nama tidak ditemukan.")
-
-#     st.markdown("---")
-#     st.markdown("<div style='text-align:center;'>Belum punya akun?</div>", unsafe_allow_html=True)
-#     if st.button("🆕 Daftar Akun Baru"):
-#         st.session_state.app_mode = 'register'
-#         st.rerun()
-
 # --------------------------------------------------------------
-# HALAMAN LOGIN (Versi Aman & Rapi Tengah)
+# HALAMAN LOGIN
 # --------------------------------------------------------------
-        if st.session_state.app_mode == 'login':
-            # Judul utama
-            st.markdown("""
-                <h1 style='text-align:center;'>🅿️ Aplikasi Parkir Barcode</h1>
-                <h3 style='text-align:center;'>Selamat Datang! Silakan Login</h3>
-            """, unsafe_allow_html=True)
-        
-            # Ruang kosong kecil atas
-            st.markdown("<br>", unsafe_allow_html=True)
-        
-            # Gunakan columns untuk pusatkan form
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                with st.form("login_form", clear_on_submit=False):
-                    st.text_input("Nama Lengkap (atau 'petugas')", key="login_name")
-                    st.text_input("Password", type="password", key="login_pass")
-                    submit = st.form_submit_button("Login", use_container_width=True)
-        
-                    if submit:
-                        username = st.session_state.login_name.strip()
-                        password = st.session_state.login_pass.strip()
-        
-                        # Login admin
-                        if username == ADMIN_USER and password == ADMIN_PASS:
-                            st.session_state.app_mode = 'admin_dashboard'
-                            st.session_state.user_role = 'admin'
-                            st.success("Login sebagai Admin berhasil!")
-                            st.rerun()
-                        # Login pengguna biasa
-                        else:
-                            df = st.session_state.data
-                            match = df[df['name'].str.lower() == username.lower()]
-                            if not match.empty:
-                                user = match.iloc[0]
-                                if check_password(password, str(user['password'])):
-                                    st.session_state.app_mode = 'user_dashboard'
-                                    st.session_state.user_role = 'user'
-                                    st.session_state.logged_in_user_id = user['barcode_id']
-                                    st.success(f"Login pengguna {user['name']} berhasil!")
-                                    st.rerun()
-                                else:
-                                    st.error("Password salah!")
-                            else:
-                                st.error("Nama tidak ditemukan.")
-        
-            # Tombol daftar akun di bawah form
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<div style='text-align:center;'>Belum punya akun?</div>", unsafe_allow_html=True)
-            colr = st.columns([1, 2, 1])[1]
-            with colr:
-                if st.button("🆕 Daftar Akun Baru", use_container_width=True):
-                    st.session_state.app_mode = 'register'
+if st.session_state.app_mode == 'login':
+    st.title("🅿️ Aplikasi Parkir Barcode")
+    st.subheader("Selamat Datang! Silakan Login")
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        with st.form("login_form"):
+            username = st.text_input("Nama Lengkap (atau 'petugas')").strip()
+            password = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Login")
+
+            if submit:
+                # Admin
+                if username == ADMIN_USER and password == ADMIN_PASS:
+                    st.session_state.app_mode = 'admin_dashboard'
+                    st.session_state.user_role = 'admin'
+                    st.success("Login sebagai Admin berhasil!")
                     st.rerun()
+                # Pengguna biasa
+                else:
+                    df = st.session_state.data
+                    match = df[df['name'].str.lower() == username.lower()]
+                    if not match.empty:
+                        user = match.iloc[0]
+                        if check_password(password, str(user['password'])):
+                            st.session_state.app_mode = 'user_dashboard'
+                            st.session_state.user_role = 'user'
+                            st.session_state.logged_in_user_id = user['barcode_id']
+                            st.success("Login pengguna berhasil!")
+                            st.rerun()
+                        else:
+                            st.error("Password salah!")
+                    else:
+                        st.error("Nama tidak ditemukan.")
+
+    st.markdown("---")
+    st.markdown("<div style='text-align:center;'>Belum punya akun?</div>", unsafe_allow_html=True)
+    if st.button("🆕 Daftar Akun Baru"):
+        st.session_state.app_mode = 'register'
+        st.rerun()
 
 
 # --------------------------------------------------------------
@@ -1187,6 +1130,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
