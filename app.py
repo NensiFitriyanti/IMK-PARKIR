@@ -683,7 +683,7 @@ if st.session_state.app_mode == 'login':
     st.title("🅿️ Aplikasi Parkir Barcode")
     st.subheader("Selamat Datang! Silakan Login")
 
-    col1 = st.columns([1])
+    col1, col2 = st.columns([2, 1])
     with col1:
         with st.form("login_form"):
             username = st.text_input("Nama Lengkap (atau 'petugas')").strip()
@@ -1131,6 +1131,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
