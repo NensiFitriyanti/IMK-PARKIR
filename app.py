@@ -586,11 +586,6 @@ def set_background(image_path):
         st.markdown(
             f"""
             <style>
-            /* 1. Hapus background-image dari .stApp utama */
-            .stApp {{
-                background-image: none; 
-            }}
-            
             /* 2. Gunakan Pseudo-element ::before untuk lapisan latar belakang */
             .stApp::before {{
                 content: "";
@@ -1346,6 +1341,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
