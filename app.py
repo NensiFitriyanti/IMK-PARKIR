@@ -787,62 +787,6 @@ if st.session_state.app_mode == 'login':
 # --------------------------------------------------------------
 # HALAMAN REGISTER
 # --------------------------------------------------------------
-elif st.session_state.app_mode == 'register':
-    st.title("🆕 Pendaftaran Akun Pengguna Baru")
-
-    with st.form("register_form"):
-        name = st.text_input("Nama Lengkap")
-        user_id = st.text_input("NIM/NIP")
-        vehicle = st.selectbox("Jenis Kendaraan", ["Motor", "Mobil"])
-        plate = st.text_input("Nomor Polisi")
-        password = st.text_input("Password", type="password")
-        confirm = st.text_input("Konfirmasi Password", type="password")
-
-        submit = st.form_submit_button("Daftar")
-
-        if submit:
-            errors = [] # List untuk mengumpulkan semua pesan error
-
-            # 1. Validasi Kolom Kosong
-            if not all([name, user_id, vehicle, plate, password, confirm]):
-                errors.append("❌ Harap isi semua kolom pendaftaran.")
-
-            # 2. Validasi Konfirmasi Password
-            if password != confirm:
-                errors.append("❌ Konfirmasi Password tidak sama.")
-
-            # 3. Validasi Kekuatan Password (Minimal 8 Karakter, Huruf + Angka)
-            if password and not is_password_valid(password):
-                errors.append("❌ Password tidak aman. Harus minimal 8 karakter dan mengandung kombinasi huruf dan angka.")
-            
-            # 4. Validasi NIM/NIP Duplikat (Diasumsikan 'user_id' adalah kolom yang harus unik)
-            # st.session_state.data adalah DataFrame utama
-            if user_id in st.session_state.data['user_id'].values:
-                 errors.append("❌ NIM/NIP sudah terdaftar. Silakan gunakan akun yang sudah ada.")
-
-            # --- Tampilkan Error atau Lanjutkan Pendaftaran ---
-            if errors:
-                for error in errors:
-                    st.error(error) # Menampilkan semua error
-            else:
-                # Logika Pendaftaran Berhasil
-                df = st.session_state.data
-                new_id = str(uuid.uuid4())
-                
-                # Tambahkan data baru ke DataFrame
-                df.loc[new_id] = [
-                    new_id, name, user_id, vehicle, plate,
-                    hash_password(password), 'OUT', '', '', ''
-                ]
-                save_data(df, DATA_FILE)
-                
-                st.success("✅ Pendaftaran berhasil! Silakan login.")
-                st.session_state.app_mode = 'login'
-                st.rerun()
-
-    if st.button("⬅️ Kembali ke Login"):
-        st.session_state.app_mode = 'login'
-        st.rerun()
 # elif st.session_state.app_mode == 'register':
 #     st.title("🆕 Pendaftaran Akun Pengguna Baru")
 
@@ -857,25 +801,144 @@ elif st.session_state.app_mode == 'register':
 #         submit = st.form_submit_button("Daftar")
 
 #         if submit:
-#             if not all([name, user_id, vehicle, plate, password]):
-#                 st.warning("Harap isi semua kolom.")
-#             elif password != confirm:
-#                 st.error("Password tidak sama.")
+#             errors = [] # List untuk mengumpulkan semua pesan error
+
+#             # 1. Validasi Kolom Kosong
+#             if not all([name, user_id, vehicle, plate, password, confirm]):
+#                 errors.append("❌ Harap isi semua kolom pendaftaran.")
+
+#             # 2. Validasi Konfirmasi Password
+#             if password != confirm:
+#                 errors.append("❌ Konfirmasi Password tidak sama.")
+
+#             # 3. Validasi Kekuatan Password (Minimal 8 Karakter, Huruf + Angka)
+#             if password and not is_password_valid(password):
+#                 errors.append("❌ Password tidak aman. Harus minimal 8 karakter dan mengandung kombinasi huruf dan angka.")
+            
+#             # 4. Validasi NIM/NIP Duplikat (Diasumsikan 'user_id' adalah kolom yang harus unik)
+#             # st.session_state.data adalah DataFrame utama
+#             if user_id in st.session_state.data['user_id'].values:
+#                  errors.append("❌ NIM/NIP sudah terdaftar. Silakan gunakan akun yang sudah ada.")
+
+#             # --- Tampilkan Error atau Lanjutkan Pendaftaran ---
+#             if errors:
+#                 for error in errors:
+#                     st.error(error) # Menampilkan semua error
 #             else:
+#                 # Logika Pendaftaran Berhasil
 #                 df = st.session_state.data
 #                 new_id = str(uuid.uuid4())
+                
+#                 # Tambahkan data baru ke DataFrame
 #                 df.loc[new_id] = [
 #                     new_id, name, user_id, vehicle, plate,
 #                     hash_password(password), 'OUT', '', '', ''
 #                 ]
 #                 save_data(df, DATA_FILE)
-#                 st.success("Pendaftaran berhasil! Silakan login.")
+                
+#                 st.success("✅ Pendaftaran berhasil! Silakan login.")
 #                 st.session_state.app_mode = 'login'
 #                 st.rerun()
 
 #     if st.button("⬅️ Kembali ke Login"):
 #         st.session_state.app_mode = 'login'
 #         st.rerun()
+
+# --------------------------------------------------------------
+# HALAMAN REGISTER (Validasi Real-time)
+# --------------------------------------------------------------
+elif st.session_state.app_mode == 'register':
+    st.title("🆕 Pendaftaran Akun Pengguna Baru")
+    
+    # Keterangan Syarat Password (Opsional, tetap bagus untuk UX)
+    # st.info(...)
+
+    # --- INI ADALAH LIST PLACEHOLDER UNTUK PESAN ERROR ---
+    error_placeholders = {}
+
+    # --- DEFINISI INPUT DI LUAR FORM UNTUK VALIDASI REAL-TIME ---
+    
+    name = st.text_input("Nama Lengkap")
+    error_placeholders['name'] = st.empty()
+
+    user_id = st.text_input("NIM/NIP")
+    error_placeholders['user_id'] = st.empty()
+    
+    vehicle = st.selectbox("Jenis Kendaraan", ["Motor", "Mobil"])
+    # Tidak perlu placeholder untuk selectbox karena tidak divalidasi dengan error khusus
+
+    plate = st.text_input("Nomor Polisi")
+    error_placeholders['plate'] = st.empty()
+    
+    password = st.text_input("Password", type="password")
+    error_placeholders['password'] = st.empty()
+
+    confirm = st.text_input("Konfirmasi Password", type="password")
+    error_placeholders['confirm'] = st.empty()
+    
+    # --------------------------------------------------------
+
+    # --- VALIDASI REAL-TIME (Dilakukan setiap kali ada input) ---
+    errors_realtime = []
+
+    # 1. Validasi NIM/NIP Duplikat (Real-time check)
+    if user_id and user_id in st.session_state.data['user_id'].values:
+        error_placeholders['user_id'].error("❌ NIM/NIP sudah terdaftar.")
+        errors_realtime.append(True) # Tandai adanya error
+    else:
+        error_placeholders['user_id'].empty()
+
+    # 2. Validasi Kekuatan Password
+    if password and not is_password_valid(password):
+        error_placeholders['password'].error("❌ Min. 8 karakter, harus mengandung huruf dan angka.")
+        errors_realtime.append(True)
+    else:
+        error_placeholders['password'].empty()
+    
+    # 3. Validasi Konfirmasi Password
+    if password and confirm and password != confirm:
+        error_placeholders['confirm'].error("❌ Konfirmasi Password tidak sama.")
+        errors_realtime.append(True)
+    else:
+        error_placeholders['confirm'].empty()
+        
+    # --------------------------------------------------------
+    
+    # --- FORM UNTUK TOMBOL SUBMIT SAJA ---
+    with st.form("register_form"):
+        # Kita bisa menambahkan placeholder untuk error umum (jika ada kolom kosong) di sini
+        general_error_placeholder = st.empty() 
+        
+        submit = st.form_submit_button("Daftar")
+        
+        if submit:
+            # Re-cek semua validasi pada saat submit:
+            
+            # A. Cek Kolom Kosong (Validation 1)
+            if not all([name, user_id, vehicle, plate, password, confirm]):
+                general_error_placeholder.error("❌ Harap isi semua kolom pendaftaran.")
+            # B. Cek apakah ada error Real-time yang masih aktif (errors_realtime)
+            elif any(errors_realtime):
+                general_error_placeholder.error("❌ Perbaiki kesalahan di atas sebelum mendaftar.")
+            # C. Lanjutkan Pendaftaran
+            else:
+                # Logika Pendaftaran Berhasil
+                df = st.session_state.data
+                new_id = str(uuid.uuid4())
+                
+                df.loc[new_id] = [
+                    new_id, name, user_id, vehicle, plate,
+                    hash_password(password), 'OUT', '', '', ''
+                ]
+                save_data(df, DATA_FILE)
+                
+                st.success("✅ Pendaftaran berhasil! Silakan login.")
+                st.session_state.app_mode = 'login'
+                st.rerun()
+
+    if st.button("⬅️ Kembali ke Login"):
+        st.session_state.app_mode = 'login'
+        st.rerun()
 
 # --------------------------------------------------------------
 # HALAMAN USER DASHBOARD
@@ -1249,6 +1312,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
