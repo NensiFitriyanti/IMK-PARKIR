@@ -772,7 +772,8 @@ if st.session_state.app_mode == 'login':
                     st.error("Nama tidak ditemukan.")
 
     st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("<div style='text-align:center;'>Belum punya akun?</div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align:center;'>**<span style='color: red;'>Belum punya akun?</span>**</div>", unsafe_allow_html=True)
+    # st.markdown("<div style='text-align:center;'>Belum punya akun?</div>", unsafe_allow_html=True)
     if st.button("Daftar Akun Baru", use_container_width=True):
         st.session_state.app_mode = 'register'
         st.rerun()
@@ -1188,6 +1189,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
