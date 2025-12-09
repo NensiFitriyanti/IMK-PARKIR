@@ -586,19 +586,53 @@ def set_background(image_path):
         st.markdown(
             f"""
             <style>
+            /* 1. Hapus background-image dari .stApp utama */
             .stApp {{
+                background-image: none; 
+            }}
+            
+            /* 2. Gunakan Pseudo-element ::before untuk lapisan latar belakang */
+            .stApp::before {{
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                /* Tempatkan gambar di lapisan ini */
                 background-image: url("data:image/jpeg;base64,{base64_img}");
                 background-size: cover;
                 background-attachment: fixed;
                 background-position: center;
+                /* --- APLIKASIKAN EFEK BURAM DI SINI --- */
+                filter: blur(3px); /* Ubah nilai 3px sesuai tingkat keburaman yang diinginkan */
+                /* Pastikan lapisan ini berada di bawah konten aplikasi */
+                z-index: -1; 
             }}
+            
+            /* 3. Atur Transparansi pada Kotak Konten Utama (Opsional, agar latar belakang buram terlihat) */
             [data-testid="stSidebar"] {{
                 background-color: rgba(255, 255, 255, 0.8);
             }}
             [data-testid="stVerticalBlock"] {{
-                background-color: rgba(255,255,255,0.9);
+                /* Menjaga blok konten agar tidak buram dan semi-transparan */
+                background-color: rgba(255,255,255,0.9); 
                 border-radius: 12px;
                 padding: 20px;
+                
+            # .stApp {{
+            #     background-image: url("data:image/jpeg;base64,{base64_img}");
+            #     background-size: cover;
+            #     background-attachment: fixed;
+            #     background-position: center;
+            # }}
+            # [data-testid="stSidebar"] {{
+            #     background-color: rgba(255, 255, 255, 0.8);
+            # }}
+            # [data-testid="stVerticalBlock"] {{
+            #     background-color: rgba(255,255,255,0.9);
+            #     border-radius: 12px;
+            #     padding: 20px;
             }}
             </style>
             """,
@@ -1312,6 +1346,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
