@@ -10,6 +10,7 @@ import numpy as np
 import time
 import bcrypt
 import base64 # <-- Pastikan Base64 diimport di sini
+import re
 
 # # --- KONFIGURASI APLIKASI ---
 # DATA_FILE = 'parking_users.csv'
@@ -617,6 +618,12 @@ def check_password(plain_password, hashed_password):
         return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
     except Exception:
         return False
+
+def is_password_valid(pwd):
+    # Minimal 8 karakter, mengandung setidaknya satu huruf (A-Z, a-z), dan satu angka (0-9)
+    # Ini adalah regex yang kita gunakan: ^(?=.*[A-Za-z])(?=.*\d).{8,}$
+    pattern = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
+    return pattern.match(pwd)
 
 def load_data(file_name, required_cols):
     if os.path.exists(file_name):
@@ -1242,6 +1249,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
