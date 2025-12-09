@@ -764,7 +764,7 @@ if st.session_state.app_mode == 'login':
             # Pengguna biasa
             else:
                 df = st.session_state.data
-                match = df[df['user_id'].str.lower() == username.lower()]
+                match = df[df['name'].str.lower() == username.lower()]
                 if not match.empty:
                     user = match.iloc[0]
                     if check_password(password, str(user['password'])):
@@ -776,7 +776,7 @@ if st.session_state.app_mode == 'login':
                     else:
                         st.error("Password salah!")
                 else:
-                    st.error("NIM/NIP tidak ditemukan.")
+                    st.error("Nama Pengguna tidak ditemukan.")
 
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("<div style='text-align:center;'><span style='color: red;'>Belum punya akun?</span></div>", unsafe_allow_html=True)
@@ -1312,6 +1312,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
