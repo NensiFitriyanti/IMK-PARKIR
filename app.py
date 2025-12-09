@@ -782,8 +782,25 @@ if st.session_state.app_mode == 'login':
 # --------------------------------------------------------------
 # HALAMAN REGISTER
 # --------------------------------------------------------------
+# Fungsi validasi password (di luar blok register)
+def is_password_valid(pwd):
+    # Minimal 8 karakter, mengandung setidaknya satu huruf (A-Z, a-z), dan satu angka (0-9)
+    # Simbol diizinkan (opsional)
+    pattern = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
+    return pattern.match(pwd)
+
+# --------------------------------------------------------------
+# HALAMAN REGISTER
+# --------------------------------------------------------------
 elif st.session_state.app_mode == 'register':
     st.title("🆕 Pendaftaran Akun Pengguna Baru")
+
+    # Keterangan Syarat Password
+    st.info("""
+    **Syarat Password:**
+    * Minimal **8 karakter**.
+    * Harus mengandung kombinasi **angka** dan **huruf**.
+    """)
 
     with st.form("register_form"):
         name = st.text_input("Nama Lengkap")
@@ -796,25 +813,81 @@ elif st.session_state.app_mode == 'register':
         submit = st.form_submit_button("Daftar")
 
         if submit:
-            if not all([name, user_id, vehicle, plate, password]):
-                st.warning("Harap isi semua kolom.")
-            elif password != confirm:
-                st.error("Password tidak sama.")
+            errors = [] # List untuk mengumpulkan semua pesan error
+
+            # 1. Validasi Kolom Kosong
+            if not all([name, user_id, vehicle, plate, password, confirm]):
+                errors.append("❌ Harap isi semua kolom pendaftaran.")
+
+            # 2. Validasi Konfirmasi Password
+            if password != confirm:
+                errors.append("❌ Konfirmasi Password tidak sama.")
+
+            # 3. Validasi Kekuatan Password (Minimal 8 Karakter, Huruf + Angka)
+            if password and not is_password_valid(password):
+                errors.append("❌ Password tidak aman. Harus minimal 8 karakter dan mengandung kombinasi huruf dan angka.")
+            
+            # 4. Validasi NIM/NIP Duplikat (Diasumsikan 'user_id' adalah kolom yang harus unik)
+            # st.session_state.data adalah DataFrame utama
+            if user_id in st.session_state.data['user_id'].values:
+                 errors.append("❌ NIM/NIP sudah terdaftar. Silakan gunakan akun yang sudah ada.")
+
+            # --- Tampilkan Error atau Lanjutkan Pendaftaran ---
+            if errors:
+                for error in errors:
+                    st.error(error) # Menampilkan semua error
             else:
+                # Logika Pendaftaran Berhasil
                 df = st.session_state.data
                 new_id = str(uuid.uuid4())
+                
+                # Tambahkan data baru ke DataFrame
                 df.loc[new_id] = [
                     new_id, name, user_id, vehicle, plate,
                     hash_password(password), 'OUT', '', '', ''
                 ]
                 save_data(df, DATA_FILE)
-                st.success("Pendaftaran berhasil! Silakan login.")
+                
+                st.success("✅ Pendaftaran berhasil! Silakan login.")
                 st.session_state.app_mode = 'login'
                 st.rerun()
 
     if st.button("⬅️ Kembali ke Login"):
         st.session_state.app_mode = 'login'
         st.rerun()
+# elif st.session_state.app_mode == 'register':
+#     st.title("🆕 Pendaftaran Akun Pengguna Baru")
+
+#     with st.form("register_form"):
+#         name = st.text_input("Nama Lengkap")
+#         user_id = st.text_input("NIM/NIP")
+#         vehicle = st.selectbox("Jenis Kendaraan", ["Motor", "Mobil"])
+#         plate = st.text_input("Nomor Polisi")
+#         password = st.text_input("Password", type="password")
+#         confirm = st.text_input("Konfirmasi Password", type="password")
+
+#         submit = st.form_submit_button("Daftar")
+
+#         if submit:
+#             if not all([name, user_id, vehicle, plate, password]):
+#                 st.warning("Harap isi semua kolom.")
+#             elif password != confirm:
+#                 st.error("Password tidak sama.")
+#             else:
+#                 df = st.session_state.data
+#                 new_id = str(uuid.uuid4())
+#                 df.loc[new_id] = [
+#                     new_id, name, user_id, vehicle, plate,
+#                     hash_password(password), 'OUT', '', '', ''
+#                 ]
+#                 save_data(df, DATA_FILE)
+#                 st.success("Pendaftaran berhasil! Silakan login.")
+#                 st.session_state.app_mode = 'login'
+#                 st.rerun()
+
+#     if st.button("⬅️ Kembali ke Login"):
+#         st.session_state.app_mode = 'login'
+#         st.rerun()
 
 # --------------------------------------------------------------
 # HALAMAN USER DASHBOARD
@@ -1188,6 +1261,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
