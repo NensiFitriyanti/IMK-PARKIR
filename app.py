@@ -582,19 +582,42 @@ def get_base64_of_bin_file(bin_file):
 
 def set_background(image_path):
     base64_img = get_base64_of_bin_file(image_path)
+    
     if base64_img:
         st.markdown(
             f"""
             <style>
+            /* 1. Hapus background-image dari .stApp utama */
             .stApp {{
+                background-image: none;
+            }}
+
+            /* 2. Gunakan Pseudo-element ::before untuk lapisan latar belakang buram */
+            .stApp::before {{
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                /* PINDAHKAN GAMBAR KE SINI */
                 background-image: url("data:image/jpeg;base64,{base64_img}");
                 background-size: cover;
                 background-attachment: fixed;
                 background-position: center;
+
+                /* --- APLIKASIKAN EFEK BURAM DI SINI --- */
+                filter: blur(5px); /* Sesuaikan nilai 5px untuk tingkat keburaman */
+
+                /* Pastikan lapisan ini berada di bawah semua konten Streamlit */
+                z-index: -1; 
             }}
+            
+            /* 3. Atur Konten Utama */
             [data-testid="stSidebar"] {{
                 background-color: rgba(255, 255, 255, 0.8);
             }}
+            /* Opsional: Tambahkan sedikit padding pada block-container utama jika Anda ingin area di sekitar form/dashboard tidak transparan */
             [data-testid="stVerticalBlock"] {{
                 background-color: rgba(255,255,255,0.9);
                 border-radius: 12px;
@@ -606,6 +629,39 @@ def set_background(image_path):
         )
     else:
         st.warning("⚠️ Gambar latar tidak ditemukan. Menggunakan warna putih.")
+# def get_base64_of_bin_file(bin_file):
+#     try:
+#         with open(bin_file, 'rb') as f:
+#             return base64.b64encode(f.read()).decode()
+#     except FileNotFoundError:
+#         return None
+
+# def set_background(image_path):
+#     base64_img = get_base64_of_bin_file(image_path)
+#     if base64_img:
+#         st.markdown(
+#             f"""
+#             <style>
+#             .stApp {{
+#                 background-image: url("data:image/jpeg;base64,{base64_img}");
+#                 background-size: cover;
+#                 background-attachment: fixed;
+#                 background-position: center;
+#             }}
+#             [data-testid="stSidebar"] {{
+#                 background-color: rgba(255, 255, 255, 0.8);
+#             }}
+#             [data-testid="stVerticalBlock"] {{
+#                 background-color: rgba(255,255,255,0.9);
+#                 border-radius: 12px;
+#                 padding: 20px;
+#             }}
+#             </style>
+#             """,
+#             unsafe_allow_html=True
+#         )
+#     else:
+#         st.warning("⚠️ Gambar latar tidak ditemukan. Menggunakan warna putih.")
 
 # --------------------------------------------------------------
 # FUNGSI UTILITAS
@@ -1312,6 +1368,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
