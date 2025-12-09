@@ -783,13 +783,6 @@ if st.session_state.app_mode == 'login':
 elif st.session_state.app_mode == 'register':
     st.title("🆕 Pendaftaran Akun Pengguna Baru")
 
-    # Keterangan Syarat Password
-    st.info("""
-    **Syarat Password:**
-    * Minimal **8 karakter**.
-    * Harus mengandung kombinasi **angka** dan **huruf**.
-    """)
-
     with st.form("register_form"):
         name = st.text_input("Nama Lengkap")
         user_id = st.text_input("NIM/NIP")
@@ -1249,6 +1242,7 @@ elif st.session_state.app_mode == 'admin_analytics' and st.session_state.user_ro
     st.markdown("---")
     st.subheader("Tabel Log Transaksi Terakhir")
     st.dataframe(df_log_filtered.tail(100).sort_values(by='timestamp', ascending=False), use_container_width=True)
+
 
 
 
